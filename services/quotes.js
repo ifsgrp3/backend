@@ -8,6 +8,7 @@ async function getMultiple(page = 1) {
     'SELECT * FROM admins OFFSET $1 LIMIT $2', 
     [offset, config.listPerPage]
   );
+  print(rows)
   const data = helper.emptyOrRows(rows);
   const meta = {page};
 
