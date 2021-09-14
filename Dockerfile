@@ -1,10 +1,11 @@
-# syntax=docker/dockerfile:1
+  FROM node:14-alpine as base
 
-FROM node:10.19.0
+WORKDIR /src
+COPY package*.json ./
+EXPOSE 3000
 
+FROM base as production
 ENV NODE_ENV=production
-WORKDIR /app
-COPY ["package-lock.json*", "./"]
-RUN npm install --production
-COPY . .
-CMD [ "node", "app.js"]
+RUN npm ci
+COPY . ./
+CMD ["npm", "start"]
