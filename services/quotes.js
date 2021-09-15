@@ -5,10 +5,10 @@ const config = require('../config');
 async function getMultiple(page = 1) {
   const offset = helper.getOffset(page, config.listPerPage);
   const rows = await db.query(
-    'SELECT * FROM admins OFFSET $1 LIMIT $2', 
+    'SELECT * FROM admins OFFSET $1 LIMIT $2;', 
     [offset, config.listPerPage]
   );
-  print(rows)
+  // console.log('print:', rows[0])
   const data = helper.emptyOrRows(rows);
   const meta = {page};
 
