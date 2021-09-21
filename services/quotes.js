@@ -5,7 +5,7 @@ const config = require('../config');
 async function getMultiple(page = 1) {
   const offset = helper.getOffset(page, config.listPerPage);
   const rows = await db.query(
-    'SELECT * FROM covid19_test_results;' ,
+    'SELECT * FROM covid19_test_results OFFSET $1 LIMIT $2' ,
     [offset, config.listPerPage]
   );
   // console.log('print:', rows[0])
