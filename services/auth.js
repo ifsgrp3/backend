@@ -1,6 +1,6 @@
 const db = require('./auth_db');
 const helper = require('../helper');
-const config = require('../config');
+const PythonShell = require('python-shell').PythonShell;
 
 async function getCredentials(page = 1) {
   //const offset = helper.getOffset(page, config.listPerPage);
@@ -27,14 +27,19 @@ async function login(credentials) {
 }
 
 async function mfa(ble_data) {
-  const spawn = require("child_process").spawn;
-  const pythonProcess = spawn('python',["mfa.py"]);
-  pythonProcess.stdout.on('data', (data) => {
-    console.log(data.toString());
-    // if (ble_data.ble_serial_number == data.toString()) {
-    //   return { data }
-    // }
+  const { success, err = '', results } = await new Promise((resolve, reject) => {
+    PythonShell.run('mfa.py', null, function (err, results) {
+      setTimeout(() => {
+        if (err) {
+          reject({ success: false, err});
+        }
+        console.log('results: %j', results);
+        resolve({ success: true, results});
+      }, )
+    });
   });
+  const status = 200;
+  return { status }
 }
 
 async function deactivate(acc) {
