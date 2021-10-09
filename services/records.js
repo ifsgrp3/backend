@@ -19,17 +19,48 @@ async function getMultiple(page = 1) {
 
 async function registration(credentials) {
     const rows = await db.query(
-      'INSERT INTO user_particulars(nric, first_name, last_name, date_of_birth, age, gender, race, contact_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)' ,
+      'CALL add_user_particulars($1, $2, $3, $4, $5, $6, $7, $8)' ,
       [credentials.nric, credentials.first_name, credentials.last_name, credentials.date_of_birth, credentials.age, credentials.gender, credentials.race, credentials.contact_number]
     );
     const status = 200;
     return { status };
 }
 
+// Contact got problem???
+async function updateContactNumber(info) {
+  const rows = await db.query(
+    'CALL update_contact_number($1, $2)' ,
+    [info.nric, info.new_contact_number]
+  );
+  // const data = helper.emptyOrRows(rows);
+  const status = 200;
+  return { status };
+}
+
+async function addAddress(info) {
+  const rows = await db.query(
+    'CALL add_user_address($1, $2, $3, $4, $5)' ,
+    [info.nric, info.street_name, info.unit_number, info.zip_code, info.area]
+  );
+  const data = helper.emptyOrRows(rows);
+  const status = 200;
+  return { data, status };
+}
+
+async function updateAddress(info) {
+  const rows = await db.query(
+    'CALL update_address($1, $2, $3, $4, $5)' ,
+    [info.nric, info.new_street_name, info.new_unit_number, info.new_zip_code, info.new_area]
+  );
+  const data = helper.emptyOrRows(rows);
+  const status = 200;
+  return { data, status };
+}
+
 async function uploadTestResults(test) {
     const rows = await db.query(
-        'INSERT INTO covid19_test_results(nric, covid19_test_type, test_result, test_date, test_id) VALUES ($1, $2, $3, $4, (SELECT count(*) FROM covid19_test_results) + 1)' ,
-        [test.nric, test.covid19_test_type, test.test_result, test.test_date]
+        'CALL add_covid19_results($1, $2, $3)' ,
+        [test.nric, test.covid19_test_type, test.test_result]
       );
       const status = 200;
       return { status };
@@ -45,8 +76,8 @@ async function getTestHistory(test) {
 
 async function uploadDeclaration(declaration) {
     const rows = await db.query(
-        'INSERT INTO health_declaration(nric, covid_symptoms, temperature, declaration_date, health_declaration_id) VALUES ($1, $2, $3, $4, (SELECT count(*) FROM health_declaration) + 1)' ,
-        [declaration.nric, declaration.covid_symptoms, declaration.temperature, declaration.declaration_date]
+        'CALL add_health_declaration($1, $2, $3)' ,
+        [declaration.nric, declaration.covid_symptoms, declaration.temperature]
       );
       const status = 200;
       return { status };
@@ -85,7 +116,7 @@ async function getRecordLogs(page = 1) {
 
 async function uploadVaccinationStatus(data) {
     const rows = await db.query(
-        'INSERT INTO vaccination_results(nric, vaccination_status, vaccine_type, vaccination_centre_location, first_dose_date, second_dose_date, vaccination_certificate_id) VALUES ($1, $2, $3, $4, $5, $6, (SELECT count(*) FROM vaccination_results) + 1)' ,
+        'CALL add_vaccination_results($1, $2, $3, $4, $5, $6)' ,
         [data.nric, data.vaccination_status, data.vaccine_type, data.vaccination_centre_location, data.first_dose_date, data.second_dose_date]
       );
     const status = 200;
@@ -115,5 +146,8 @@ module.exports = {
   getDeclarationHistory,
   getRecordLogs,
   uploadVaccinationStatus,
-  getVaccinationStatus
+  getVaccinationStatus,
+  updateContactNumber,
+  addAddress,
+  updateAddress
 }

@@ -21,6 +21,33 @@ router.post('/reg', async function(req, res, next) {
     }
 })
 
+router.put('/update_num', async function(req, res, next) {
+    try {
+        res.json(await records.updateContactNumber(req.body));
+    } catch (err) {
+        console.error(`Error while logging `, err.message);
+        next(err);
+    }
+})
+
+router.post('/address', async function(req, res, next) {
+    try {
+        res.json(await records.addAddress(req.body));
+    } catch (err) {
+        console.error(`Error while logging `, err.message);
+        next(err);
+    }
+})
+
+router.put('/address', async function(req, res, next) {
+    try {
+        res.json(await records.updateAddress(req.body));
+    } catch (err) {
+        console.error(`Error while logging `, err.message);
+        next(err);
+    }
+})
+
 router.post('/upload_test', async function(req, res, next) {
     try {
         res.json(await records.uploadTestResults(req.body));

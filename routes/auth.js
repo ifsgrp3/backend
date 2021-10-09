@@ -21,9 +21,9 @@ router.post('/login', async function(req, res, next) {
     }
 })
 
-router.post('/mfa', async function(req, res, next) {
+router.get('/mfa', async function(req, res, next) {
   try {
-      res.json(await auth.mfa(req.body));
+      res.json(await auth.mfa());
   } catch (err) {
       console.error(`Error while logging `, err.message);
       next(err);
