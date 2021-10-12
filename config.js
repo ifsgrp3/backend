@@ -7,6 +7,7 @@ const config = {
     user: env.DB_USER || 'postgres',
     password: env.DB_PASSWORD || 'mysecretpassword',
     database: env.DB_NAME || 'healthrecords',
+    secret: env.JWT_SECRET || 'secret'
   },
   listPerPage: env.LIST_PER_PAGE || 10,
 };

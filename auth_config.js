@@ -7,6 +7,7 @@ const config = {
     user: env.DB_USER || 'postgres', // ''User'
     password: env.DB_PASSWORD || 'mysecretpassword',
     database: env.DB_NAME || 'credentials',
+    secret: env.JWT_SECRET || 'secret'
   }
 };
 

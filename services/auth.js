@@ -1,7 +1,9 @@
 const db = require('./auth_db');
 const helper = require('../helper');
-const PythonShell = require('python-shell').PythonShell;
+// const PythonShell = require('python-shell').PythonShell;
 const {spawn} = require('child_process');
+const jwt = require('jsonwebtoken');
+const config = require('../auth_config')
 
 async function getCredentials(page = 1) {
   //const offset = helper.getOffset(page, config.listPerPage);
@@ -28,13 +30,30 @@ async function registration(data) {
 }
 
 async function login(credentials) {
+    const nric = credentials.nric;
+    const hashed_password = credentials.hashed_password;
+    const secret = config.db.secret;
+    console.log(secret);
+    if (!nric || !hashed_password) {
+      return res.send({
+          error: 'User name and password required'
+      })
+    }
     const rows = await db.query(
         'SELECT ble_serial_number, account_status FROM login_credentials WHERE nric = $1 AND hashed_password = $2 AND account_role = $3' ,
-        [credentials.nric, credentials.hashed_password, credentials.account_role]
+        [nric, hashed_password, credentials.account_role]
     );
     // Update password attempts, > 10 attempts => deactivate
     const data = helper.emptyOrRows(rows);
-    return { data }
+    if (!data) {
+      const status = 401;
+      const error = 'Invalid username or password';
+      return { status, error };
+    }
+    const token = jwt.sign(
+      data, secret, { expiresIn: 60 * 60 }
+    );
+    return { token }
 }
 
 async function mfa() {
@@ -51,20 +70,31 @@ async function mfa() {
   //     return { status }
   //   });
   // });
-  var dataToSend;
-  // spawn new child process to call the python script
-  const python = spawn('python', ['mfa.py']);
-  // collect data from script
-  python.stdout.on('data', function (data) {
-   console.log('Pipe data from python script ...');
-   dataToSend = data.toString();
-  });
-  // in close event we are sure that stream from child process is closed
-  python.on('close', (code) => {
-  console.log(`child process close all stdio with code ${code}`);
-  // send data to browser
-  return { data: dataToSend };
-  });
+
+  // var dataToSend;
+  // // spawn new child process to call the python script
+  // const python = spawn('python', ['mfa.py']);
+  // // collect data from script
+  // python.stdout.on('data', function (data) {
+  //  console.log('Pipe data from python script ...');
+  //  dataToSend = data.toString();
+  // });
+  // // in close event we are sure that stream from child process is closed
+  // python.on('close', (code) => {
+  // console.log(`child process close all stdio with code ${code}`);
+  // // send data to browser
+  // return { data: dataToSend };
+  // });
+  return new Promise((resolve, reject) => {
+    const python = spawn("python", ["services/mfa.py"]);
+    python.stdout.on("data", (data) => {
+      resolve(data.toString());
+    });
+
+    python.stderr.on("data", (data) => {
+      reject(data.toString());
+    });
+ });
 }
 
 async function deactivate(acc) {

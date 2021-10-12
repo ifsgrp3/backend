@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../services/auth');
+const authCheck = require('../middlewares/authCheck')
 
 /* GET quotes listing. */
 router.get('/accs', async function(req, res, next) {
@@ -30,7 +31,7 @@ router.get('/mfa', async function(req, res, next) {
   }
 })
 
-router.post('/deact_acc', async function(req, res, next) {
+router.post('/deact_acc', authCheck, async function(req, res, next) {
   try {
       res.json(await auth.deactivate(req.body));
   } catch (err) {
