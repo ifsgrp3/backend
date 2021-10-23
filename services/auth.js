@@ -39,7 +39,7 @@ async function login(credentials) {
       }
     }
     const rows = await db.query(
-        'SELECT nric, ble_serial_number, account_status FROM login_credentials WHERE nric = $1 AND hashed_password = $2 AND account_role = $3' ,
+        'SELECT nric, ble_serial_number, account_status, account_role FROM login_credentials WHERE nric = $1 AND hashed_password = $2 AND account_role = $3' ,
         [nric, hashed_password, credentials.account_role]
     );
     // Update password attempts, > 10 attempts => deactivate
@@ -145,6 +145,41 @@ async function resetPasswordAttempts(data) {
   return { status }
 }
 
+async function getMenuItems(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const data = [
+      { path: '/user-profile', title: 'User Profile',  icon:'person', class: '' },
+      { path: '/covid-test', title: 'COVID-19 Test Results', icon: 'content_paste', class: '' },
+      { path: '/covid-history', title: 'COVID-19 Test History', icon: 'content_paste', class: '' },
+      { path: '/health-declaration', title: 'Health Declaration', icon: 'content_paste', class: '' },
+      { path: '/health-record', title: 'Health Record', icon: 'content_paste', class: '' },
+      { path: '/statistics', title: 'Query Database', icon: 'content_paste', class: '' },
+      { path: '/news', title: 'News Bulletin', icon: 'content_paste', class: '' },
+    ] 
+    return { data: data };
+  } else if (account_role == 2) {
+    const data = [
+      { path: '/user-profile', title: 'User Profile',  icon:'person', class: '' },
+      { path: '/accounts', title: 'Accounts Management', icon: 'content_paste', class: '' },
+      { path: '/registration', title: 'User Registration', icon: 'content_paste', class: '' },
+      { path: '/account-logs' , title: 'Accounts Logging', icon: 'content_paste', class: '' },
+      { path: '/record-logs' , title: 'Records Logging', icon: 'content_paste', class: '' }
+    ]
+    return { data: data };
+  } else {
+    const data = [
+      { path: '/covid-declaration' , title: 'COVID-19 Personnel Dashboard', icon: 'content_paste', class: '' },
+      { path: '/health-declaration', title: 'Health Declaration', icon: 'content_paste', class: '' },
+      { path: '/vaccination' , title: 'Vaccination Status', icon: 'content_paste', class: '' }
+    ]
+    return { data: data };
+  }
+  // data = JSON.stringify(data);
+}
+
 module.exports = {
   getCredentials,
   login,
@@ -153,5 +188,6 @@ module.exports = {
   activate,
   getAccountLogs,
   registration,
-  resetPasswordAttempts
+  resetPasswordAttempts,
+  getMenuItems
 }

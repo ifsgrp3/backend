@@ -13,7 +13,7 @@ const authCheck = require('../middlewares/authCheck')
 //   }
 // });
 
-router.post('/reg', async function(req, res, next) {
+router.post('/reg', authCheck, async function(req, res, next) {
     try {
         res.json(await records.registration(req.body));
     } catch (err) {
@@ -22,7 +22,7 @@ router.post('/reg', async function(req, res, next) {
     }
 })
 
-router.get('/profile', async function(req, res, next) {
+router.get('/profile', authCheck, async function(req, res, next) {
     try {
         res.json(await records.getProfile(req));
     } catch (err) {
@@ -60,7 +60,7 @@ router.put('/address', authCheck, async function(req, res, next) {
 
 router.post('/upload_test', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.uploadTestResults(req.body));
+        res.json(await records.uploadTestResults(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);

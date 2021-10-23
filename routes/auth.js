@@ -67,4 +67,13 @@ router.get('/acc/logs', authCheck, async function(req, res, next) {
   }
 });
 
+router.get('/items', authCheck, async function(req, res, next) {
+  try {
+    res.json(await auth.getMenuItems(req));
+  } catch (err) {
+    console.error(`Error while logging `, err.message);
+    next(err);
+  }
+});
+
 module.exports = router;

@@ -18,13 +18,20 @@ async function getMultiple(page = 1) {
   }
 }
 
-async function registration(credentials) {
+async function registration(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role === 2) {
     const rows = await db.query(
       'CALL add_user_particulars($1, $2, $3, $4, $5, $6, $7, $8)' ,
-      [credentials.nric, credentials.first_name, credentials.last_name, credentials.date_of_birth, credentials.age, credentials.gender, credentials.race, credentials.contact_number]
+      [req.body.nric, req.body.first_name, req.body.last_name, req.body.date_of_birth, req.body.age, req.body.gender, req.body.race, req.body.contact_number]
     );
     const status = 200;
     return { status };
+  } else {
+    return { status: 404 };
+  }
 }
 
 async function getProfile(req) {
@@ -88,13 +95,21 @@ async function updateAddress(info) {
   return { data, status };
 }
 
-async function uploadTestResults(test) {
+async function uploadTestResults(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  const nric = decoded["nric"];
+  if (account_role == 1) {
     const rows = await db.query(
-        'CALL add_covid19_results($1, $2, $3)' ,
-        [test.nric, test.covid19_test_type, test.test_result]
-      );
-      const status = 200;
-      return { status };
+      'CALL add_covid19_results($1, $2, $3)' ,
+      [nric, req.body.covid19_test_type, req.body.test_result]
+    );
+    const status = 200;
+    return { status };
+  } else {
+    return { status: 404 };
+  }
 }
 
 async function getTestHistory(req) {
