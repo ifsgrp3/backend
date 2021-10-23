@@ -4,7 +4,7 @@ const auth = require('../services/auth');
 const authCheck = require('../middlewares/authCheck')
 
 /* GET quotes listing. */
-router.get('/accs', async function(req, res, next) {
+router.get('/accs', authCheck, async function(req, res, next) {
   try {
     res.json(await auth.getCredentials(req.query.page));
   } catch (err) {
@@ -22,16 +22,25 @@ router.post('/login', async function(req, res, next) {
     }
 })
 
-router.get('/mfa', async function(req, res, next) {
+router.post('/register', async function(req, res, next) {
   try {
-      res.json(await auth.mfa());
+      res.json(await auth.registration(req.body));
   } catch (err) {
       console.error(`Error while logging `, err.message);
       next(err);
   }
 })
 
-router.post('/deact_acc', authCheck, async function(req, res, next) {
+router.get('/mfa', async function(req, res, next) {
+  try {
+      res.json(await auth.mfa(req));
+  } catch (err) {
+      console.error(`Error while logging `, err.message);
+      next(err);
+  }
+})
+
+router.post('/acc/deact', authCheck, async function(req, res, next) {
   try {
       res.json(await auth.deactivate(req.body));
   } catch (err) {
@@ -40,7 +49,7 @@ router.post('/deact_acc', authCheck, async function(req, res, next) {
   }
 })
 
-router.post('/act_acc', async function(req, res, next) {
+router.post('/acc/act', authCheck, async function(req, res, next) {
   try {
       res.json(await auth.activate(req.body));
   } catch (err) {
@@ -49,7 +58,7 @@ router.post('/act_acc', async function(req, res, next) {
   }
 })
 
-router.get('/account_logs', async function(req, res, next) {
+router.get('/acc/logs', authCheck, async function(req, res, next) {
   try {
     res.json(await auth.getAccountLogs(req.query.page));
   } catch (err) {

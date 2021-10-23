@@ -6,45 +6,53 @@ from adafruit_ble import BLERadio
 from adafruit_ble.services.gmsservice import GMS
 from adafruit_ble.advertising import Advertisement
 from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
-import random
-
-# allowed_characters = 'abcdefghijklmnopqrstuvwxyz0123456789'
-
-key = (b"1111222233334444")
-# key_length = 16
-# key = bytes(random.choices(allowed_characters, k=16))
-decryptor = AES.new(key, AES.MODE_ECB)
-
-def decryption(ciphertext):
-    data = binascii.unhexlify(ciphertext)
-    plaintext = decryptor.decrypt(data)
-    print(plaintext.decode("utf-8"))
 
 ble = BLERadio()
 found = set()
+device_name_prefix = "ble_device"
+authentication_code = b"Authentication"
 
+def aes_decryption(ciphertext):
+    key = (b"1111222233334444")
+    ciphertext = binascii.unhexlify(ciphertext)
+    decryptor = AES.new(key, AES.MODE_ECB)
+    plaintext = decryptor.decrypt(ciphertext)
+    return plaintext.decode("utf-8")
+
+def aes_encryption(plaintext):
+    key = (b"1111222233334444")
+    encryptor = AES.new(key, AES.MODE_ECB)
+    plaintext = plaintext.encode("utf-8")
+    ciphertext = encryptor.encrypt(plaintext)
+    return binascii.hexlify(ciphertext).upper()
+    
 # Scan and detect dongles
+# print("\nSearching for MFA devices...\n")
 for advertisement in ble.start_scan(Advertisement, timeout=5):
     device_name = advertisement.complete_name
  
     if device_name and device_name not in found:
-        if device_name.startswith("ble_device"):
+        if device_name.startswith(device_name_prefix):
             # Add dongle to found list 
             found.add(device_name)
+            # print("MFA device found: " + device_name)
+            # print("Connected to " + device_name)
+            # print("Receiving transmission...")
             # Establish connection with dongle
             GMS_connection = ble.connect(advertisement)
-            # print("Connected to " + device_name)
             # Tranmission with dongle
             if GMS_connection and GMS_connection.connected:
                 GMS_transmission = GMS_connection[GMS]
-                GMS_transmission.write(b"Authentication")
-                ble_serial_number = GMS_transmission.read(32).decode("utf-8")
-                decryption(ble_serial_number)
-#                if ble_serial_number:
- #                   print(ble_serial_number)
-  #              public_key = GMS_transmission.read(64).decode("utf-8")
-   #             if public_key:
-    #                print(public_key)
+                GMS_transmission.write(authentication_code)
+                ciphertext = GMS_transmission.read(64).decode("utf-8")
+                try:
+                    ciphertext += GMS_transmission.read(64).decode("utf-8")
+                except:
+                    print("failed")
+                #print(ciphertext)
+                #print("Encrypted serial number: " + ciphertext)
+                ble_serial_num = aes_decryption(ciphertext)
+                print(ble_serial_num)
                 GMS_connection.disconnect()
                 
 ble.stop_scan() 

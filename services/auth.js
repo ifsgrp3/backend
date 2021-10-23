@@ -33,62 +33,63 @@ async function login(credentials) {
     const nric = credentials.nric;
     const hashed_password = credentials.hashed_password;
     const secret = config.db.secret;
-    console.log(secret);
     if (!nric || !hashed_password) {
-      return res.send({
+      return {
           error: 'User name and password required'
-      })
+      }
     }
     const rows = await db.query(
-        'SELECT ble_serial_number, account_status FROM login_credentials WHERE nric = $1 AND hashed_password = $2 AND account_role = $3' ,
+        'SELECT nric, ble_serial_number, account_status FROM login_credentials WHERE nric = $1 AND hashed_password = $2 AND account_role = $3' ,
         [nric, hashed_password, credentials.account_role]
     );
     // Update password attempts, > 10 attempts => deactivate
     const data = helper.emptyOrRows(rows);
-    if (!data) {
+    console.log(data);
+    if (!data[0]) {
+      await db.query(
+        "UPDATE login_credentials SET password_attempts = password_attempts + 1 WHERE nric = $1" ,
+        [nric]
+      );
+      const updateRow = await db.query(
+        'SELECT password_attempts FROM login_credentials WHERE nric = $1' ,
+        [nric]
+      );
+      const newData = helper.emptyOrRows(updateRow);
+      console.log(newData[0].password_attempts);
+      if( newData[0].password_attempts > 10) {
+        return await deactivate({ nric: nric });
+      }
       const status = 401;
       const error = 'Invalid username or password';
-      return { status, error };
+      return { data: newData, status, error };
     }
+    await db.query(
+      "UPDATE login_credentials SET password_attempts = 0 WHERE nric = $1" ,
+      [nric]
+    );
     const token = jwt.sign(
-      data, secret, { expiresIn: 60 * 60 }
+      data[0], secret, { expiresIn: 60 * 60 }
     );
     return { token }
 }
 
-async function mfa() {
-  // const { success, err = '', results } = await new Promise((resolve, reject) => {
-  //   PythonShell.run('mfa.py', null, function (err, results) {
-  //     // setTimeout(() => {
-  //       if (err) {
-  //         reject({ success: false, err});
-  //       }
-  //       console.log('results: %j', results);
-  //       resolve({ success: true, results});
-  //     // }, 8000)
-  //     const status = 200;
-  //     return { status }
-  //   });
-  // });
-
-  // var dataToSend;
-  // // spawn new child process to call the python script
-  // const python = spawn('python', ['mfa.py']);
-  // // collect data from script
-  // python.stdout.on('data', function (data) {
-  //  console.log('Pipe data from python script ...');
-  //  dataToSend = data.toString();
-  // });
-  // // in close event we are sure that stream from child process is closed
-  // python.on('close', (code) => {
-  // console.log(`child process close all stdio with code ${code}`);
-  // // send data to browser
-  // return { data: dataToSend };
-  // });
+async function mfa(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const serialNumber = decoded["ble_serial_number"];
+  // const serialNumber = "1234567890123456"
   return new Promise((resolve, reject) => {
     const python = spawn("python", ["services/mfa.py"]);
     python.stdout.on("data", (data) => {
-      resolve(data.toString());
+      //resolve(data.toString().replace("\r\n",""));
+      data = data.toString().replace("\r\n","");
+      console.log(data)
+      console.log(serialNumber)
+      if (data === serialNumber) {
+        resolve({ status: 200 });
+      } else {
+        resolve({ status: 401, error: "BLE serial number not matched!" });
+      }
     });
 
     python.stderr.on("data", (data) => {
@@ -107,7 +108,8 @@ async function deactivate(acc) {
     [acc.nric]
   );
   const status = 200;
-  return { status }
+  const message = "Account deactivated"
+  return { status, message }
 }
 
 async function activate(acc) {
@@ -122,7 +124,7 @@ async function activate(acc) {
 async function getAccountLogs(page = 1) {
   //const offset = helper.getOffset(page, config.listPerPage);
   const rows = await db.query(
-    'SELECT * FROM account_logs' ,
+    'SELECT * FROM account_logs LIMIT 200' ,
     []
   );
   // console.log('print:', rows[0])

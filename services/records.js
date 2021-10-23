@@ -1,6 +1,7 @@
 const db = require('./db');
 const helper = require('../helper');
 const config = require('../config');
+const jwt = require('jsonwebtoken');
 
 async function getMultiple(page = 1) {
   //const offset = helper.getOffset(page, config.listPerPage);
@@ -26,7 +27,37 @@ async function registration(credentials) {
     return { status };
 }
 
+async function getProfile(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const nric = decoded["nric"];
+  const rows = await db.query(
+      'SELECT * FROM user_particulars where nric = $1', [nric]
+  );
+  const data = helper.emptyOrRows(rows);
+  return { data };
+}
+
+async function removeUserParticulars() {
+  const rows = await db.query(
+    'CALL remove_user_particulars($1)' ,
+    [credentials.nric]
+  );
+  const status = 200;
+  return { status };
+}
+
 // Contact got problem???
+async function updateName(info) {
+  const rows = await db.query(
+    'CALL update_user_first_last_name($1, $2, $3)' ,
+    [info.nric, info.new_last_name, info.new_first_name]
+  );
+  // const data = helper.emptyOrRows(rows);
+  const status = 200;
+  return { status };
+}
+
 async function updateContactNumber(info) {
   const rows = await db.query(
     'CALL update_contact_number($1, $2)' ,
@@ -66,37 +97,35 @@ async function uploadTestResults(test) {
       return { status };
 }
 
-async function getTestHistory(test) {
+async function getTestHistory(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const nric = decoded["nric"];
     const rows = await db.query(
-        'SELECT * FROM covid19_test_results where nric = $1', [test.nric]
+        'SELECT * FROM covid19_test_results where nric = $1', [nric]
     );
     const data = helper.emptyOrRows(rows);
     return { data };
 }
 
-async function uploadDeclaration(declaration) {
+async function uploadDeclaration(req) {
+    const token = req.headers.authorization;
+    const decoded = jwt.verify(token, config.db.secret);
+    const nric = decoded["nric"];
     const rows = await db.query(
         'CALL add_health_declaration($1, $2, $3)' ,
-        [declaration.nric, declaration.covid_symptoms, declaration.temperature]
+        [nric, req.body.covid_symptoms, req.body.temperature]
       );
       const status = 200;
       return { status };
 }
 
-async function getDeclarationHistory(declaration) {
+async function getDeclarationHistory(req) {
     const rows = await db.query(
-        'SELECT * FROM health_declaration where nric = $1', [declaration.nric]
+        'SELECT * FROM health_declaration', []
     );
     const data = helper.emptyOrRows(rows);
     return { data };
-}
-
-async function query(filter) {
-    // const rows = await db.query(
-    //     'SELECT * FROM vaccination_results where nric = $1', [declaration.nric]
-    // );
-    // const data = helper.emptyOrRows(rows);
-    // return { data };
 }
 
 async function getRecordLogs(page = 1) {
@@ -123,10 +152,9 @@ async function uploadVaccinationStatus(data) {
     return { status };
 }
 
-async function getVaccinationStatus(page = 1) {
+async function getVaccinationStatus(info) {
     const rows = await db.query(
-        'SELECT * FROM vaccination_results' ,
-        []
+        'SELECT * FROM vaccination_results where where nric = $1', [info.nric]
     );
     // console.log('print:', rows[0])
     const data = helper.emptyOrRows(rows);
@@ -135,6 +163,21 @@ async function getVaccinationStatus(page = 1) {
         data,
         meta
     }
+}
+
+async function getDashboard(page = 1) {
+  const rows = await db.query(
+      'SELECT vaccination_results.nric, temperature, first_dose_date, second_dose_date, covid_symptoms FROM vaccination_results INNER JOIN health_declaration ON (vaccination_results.nric = health_declaration.nric)' ,
+      []
+  );
+  // console.log('print:', rows[0])
+  console.log(rows);
+  const data = helper.emptyOrRows(rows);
+  const meta = { page };
+  return {
+      data,
+      meta
+  }
 }
 
 module.exports = {
@@ -149,5 +192,9 @@ module.exports = {
   getVaccinationStatus,
   updateContactNumber,
   addAddress,
-  updateAddress
+  updateAddress,
+  removeUserParticulars,
+  updateName,
+  getDashboard,
+  getProfile
 }

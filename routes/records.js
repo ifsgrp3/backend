@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const records = require('../services/records');
+const authCheck = require('../middlewares/authCheck')
 
 /* GET quotes listing. */
 // router.get('/', async function(req, res, next) {
@@ -21,7 +22,16 @@ router.post('/reg', async function(req, res, next) {
     }
 })
 
-router.put('/update_num', async function(req, res, next) {
+router.get('/profile', async function(req, res, next) {
+    try {
+        res.json(await records.getProfile(req));
+    } catch (err) {
+        console.error(`Error while logging `, err.message);
+        next(err);
+    }
+})
+
+router.put('/update_num', authCheck, async function(req, res, next) {
     try {
         res.json(await records.updateContactNumber(req.body));
     } catch (err) {
@@ -30,7 +40,7 @@ router.put('/update_num', async function(req, res, next) {
     }
 })
 
-router.post('/address', async function(req, res, next) {
+router.post('/address', authCheck, async function(req, res, next) {
     try {
         res.json(await records.addAddress(req.body));
     } catch (err) {
@@ -39,7 +49,7 @@ router.post('/address', async function(req, res, next) {
     }
 })
 
-router.put('/address', async function(req, res, next) {
+router.put('/address', authCheck, async function(req, res, next) {
     try {
         res.json(await records.updateAddress(req.body));
     } catch (err) {
@@ -48,7 +58,7 @@ router.put('/address', async function(req, res, next) {
     }
 })
 
-router.post('/upload_test', async function(req, res, next) {
+router.post('/upload_test', authCheck, async function(req, res, next) {
     try {
         res.json(await records.uploadTestResults(req.body));
     } catch (err) {
@@ -57,34 +67,34 @@ router.post('/upload_test', async function(req, res, next) {
     }
 })
 
-router.post('/test_history', async function(req, res, next) {
+router.get('/test_history', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.getTestHistory(req.body));
+        res.json(await records.getTestHistory(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);
     }
 })
 
-router.post('/upload_declaration', async function(req, res, next) {
+router.post('/upload_declaration', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.uploadDeclaration(req.body));
+        res.json(await records.uploadDeclaration(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);
     }
 })
 
-router.post('/declaration_history', async function(req, res, next) {
+router.get('/declaration_history', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.getDeclarationHistory(req.body));
+        res.json(await records.getDeclarationHistory(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);
     }
 })
 
-router.get('/record_logs', async function(req, res, next) {
+router.get('/record_logs', authCheck, async function(req, res, next) {
     try {
       res.json(await records.getRecordLogs(req.query.page));
     } catch (err) {
@@ -93,7 +103,7 @@ router.get('/record_logs', async function(req, res, next) {
     }
 });
 
-router.post('/upload_vaccination', async function(req, res, next) {
+router.post('/upload_vaccination', authCheck, async function(req, res, next) {
     try {
         res.json(await records.uploadVaccinationStatus(req.body));
     } catch (err) {
@@ -102,9 +112,18 @@ router.post('/upload_vaccination', async function(req, res, next) {
     }
 })
 
-router.get('/covid_dashboard', async function(req, res, next) {
+router.post('/vaccination_history', authCheck, async function(req, res, next) {
     try {
-      res.json(await records.getVaccinationStatus(req.query.page));
+      res.json(await records.getVaccinationStatus(req.body));
+    } catch (err) {
+      console.error(`Error while logging `, err.message);
+      next(err);
+    }
+});
+
+router.get('/covid_dashboard', authCheck, async function(req, res, next) {
+    try {
+      res.json(await records.getDashboard(req.query.page));
     } catch (err) {
       console.error(`Error while logging `, err.message);
       next(err);
