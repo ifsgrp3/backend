@@ -15,7 +15,7 @@ const authCheck = require('../middlewares/authCheck')
 
 router.post('/reg', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.registration(req.body));
+        res.json(await records.registration(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);
@@ -105,16 +105,16 @@ router.get('/record_logs', authCheck, async function(req, res, next) {
 
 router.post('/upload_vaccination', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.uploadVaccinationStatus(req.body));
+        res.json(await records.uploadVaccinationStatus(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);
     }
 })
 
-router.post('/vaccination_history', authCheck, async function(req, res, next) {
+router.get('/vaccination_history', authCheck, async function(req, res, next) {
     try {
-      res.json(await records.getVaccinationStatus(req.body));
+      res.json(await records.getVaccinationStatus(req));
     } catch (err) {
       console.error(`Error while logging `, err.message);
       next(err);
@@ -123,7 +123,7 @@ router.post('/vaccination_history', authCheck, async function(req, res, next) {
 
 router.get('/covid_dashboard', authCheck, async function(req, res, next) {
     try {
-      res.json(await records.getDashboard(req.query.page));
+      res.json(await records.getDashboard(req, req.query.page));
     } catch (err) {
       console.error(`Error while logging `, err.message);
       next(err);
@@ -132,7 +132,7 @@ router.get('/covid_dashboard', authCheck, async function(req, res, next) {
 
 router.get('/statistics', authCheck, async function(req, res, next) {
     try {
-      res.json(await records.query());
+      res.json(await records.query(req));
     } catch (err) {
       console.error(`Error while logging `, err.message);
       next(err);

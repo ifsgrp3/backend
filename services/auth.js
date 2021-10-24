@@ -5,28 +5,42 @@ const {spawn} = require('child_process');
 const jwt = require('jsonwebtoken');
 const config = require('../auth_config')
 
-async function getCredentials(page = 1) {
+async function getCredentials(req) {
   //const offset = helper.getOffset(page, config.listPerPage);
-  const rows = await db.query(
-    'SELECT * FROM login_credentials' ,
-    []
-  );
-  // console.log('print:', rows[0])
-  const data = helper.emptyOrRows(rows);
-  const meta = {page};
-  return {
-    data,
-    meta
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      'SELECT * FROM login_credentials' ,
+      []
+    );
+    // console.log('print:', rows[0])
+    const data = helper.emptyOrRows(rows);
+    const meta = {page};
+    return {
+      data,
+      meta
+    }
+  } else {
+    return { status: 404 }
   }
 }
 
 async function registration(data) {
-  const rows = await db.query(
-    "CALL add_user($1, $2, $3, $4, $5, $6)" ,
-    [data.nric, data.hashed_password, data.user_salt, data.ble_serial_number, data.account_role, data.admin_id]
-  );
-  const status = 200;
-  return { status }
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      "CALL add_user($1, $2, $3, $4, $5, $6)" ,
+      [data.nric, data.hashed_password, data.user_salt, data.ble_serial_number, data.account_role, data.admin_id]
+    );
+    const status = 200;
+    return { status }
+  } else {
+    return { status: 404 }
+  }
 }
 
 async function login(credentials) {
@@ -50,10 +64,7 @@ async function login(credentials) {
         "UPDATE login_credentials SET password_attempts = password_attempts + 1 WHERE nric = $1" ,
         [nric]
       );
-      const updateRow = await db.query(
-        'SELECT password_attempts FROM login_credentials WHERE nric = $1' ,
-        [nric]
-      );
+      const updateRow = await resetPasswordAttempts({ nric: nric });
       const newData = helper.emptyOrRows(updateRow);
       console.log(newData[0].password_attempts);
       if( newData[0].password_attempts > 10) {
@@ -68,7 +79,7 @@ async function login(credentials) {
       [nric]
     );
     const token = jwt.sign(
-      data[0], secret, { expiresIn: 60 * 60 }
+      data[0], secret, { expiresIn: '7d' }
     );
     return { token }
 }
@@ -121,18 +132,23 @@ async function activate(acc) {
   return { status }
 }
 
-async function getAccountLogs(page = 1) {
+async function getAccountLogs(req) {
   //const offset = helper.getOffset(page, config.listPerPage);
-  const rows = await db.query(
-    'SELECT * FROM account_logs LIMIT 200' ,
-    []
-  );
-  // console.log('print:', rows[0])
-  const data = helper.emptyOrRows(rows);
-  const meta = {page};
-  return {
-    data,
-    meta
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      'SELECT * FROM account_logs LIMIT 200' ,
+      []
+    );
+    // console.log('print:', rows[0])
+    const data = helper.emptyOrRows(rows);
+    return {
+      data
+    }
+  } else {
+    return { status: 404 }
   }
 }
 
@@ -149,7 +165,7 @@ async function getMenuItems(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
-  if (account_role == 1) {
+  if (account_role == 3) {
     const data = [
       { path: '/user-profile', title: 'User Profile',  icon:'person', class: '' },
       { path: '/covid-test', title: 'COVID-19 Test Results', icon: 'content_paste', class: '' },
@@ -160,7 +176,7 @@ async function getMenuItems(req) {
       { path: '/news', title: 'News Bulletin', icon: 'content_paste', class: '' },
     ] 
     return { data: data };
-  } else if (account_role == 2) {
+  } else if (account_role == 1) {
     const data = [
       { path: '/user-profile', title: 'User Profile',  icon:'person', class: '' },
       { path: '/accounts', title: 'Accounts Management', icon: 'content_paste', class: '' },

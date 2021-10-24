@@ -6,7 +6,7 @@ const authCheck = require('../middlewares/authCheck')
 /* GET quotes listing. */
 router.get('/accs', authCheck, async function(req, res, next) {
   try {
-    res.json(await auth.getCredentials(req.query.page));
+    res.json(await auth.getCredentials(req));
   } catch (err) {
     console.error(`Error while logging `, err.message);
     next(err);
@@ -22,7 +22,7 @@ router.post('/login', async function(req, res, next) {
     }
 })
 
-router.post('/register', async function(req, res, next) {
+router.post('/register', authCheck, async function(req, res, next) {
   try {
       res.json(await auth.registration(req.body));
   } catch (err) {
@@ -31,7 +31,7 @@ router.post('/register', async function(req, res, next) {
   }
 })
 
-router.get('/mfa', async function(req, res, next) {
+router.get('/mfa', authCheck, async function(req, res, next) {
   try {
       res.json(await auth.mfa(req));
   } catch (err) {
@@ -60,7 +60,7 @@ router.post('/acc/act', authCheck, async function(req, res, next) {
 
 router.get('/acc/logs', authCheck, async function(req, res, next) {
   try {
-    res.json(await auth.getAccountLogs(req.query.page));
+    res.json(await auth.getAccountLogs(req));
   } catch (err) {
     console.error(`Error while logging `, err.message);
     next(err);

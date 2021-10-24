@@ -1,4 +1,5 @@
 const db = require('./db');
+const logs_db = require('./logs_db')
 const helper = require('../helper');
 const config = require('../config');
 const jwt = require('jsonwebtoken');
@@ -22,16 +23,16 @@ async function registration(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
-  if (account_role === 2) {
+  // if (account_role === 2) {
     const rows = await db.query(
       'CALL add_user_particulars($1, $2, $3, $4, $5, $6, $7, $8)' ,
       [req.body.nric, req.body.first_name, req.body.last_name, req.body.date_of_birth, req.body.age, req.body.gender, req.body.race, req.body.contact_number]
     );
     const status = 200;
     return { status };
-  } else {
-    return { status: 404 };
-  }
+  // } else {
+  //   return { status: 404 };
+  // }
 }
 
 async function getProfile(req) {
@@ -100,7 +101,7 @@ async function uploadTestResults(req) {
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
   const nric = decoded["nric"];
-  if (account_role == 1) {
+  if (account_role == 3) {
     const rows = await db.query(
       'CALL add_covid19_results($1, $2, $3)' ,
       [nric, req.body.covid19_test_type, req.body.test_result]
@@ -116,72 +117,114 @@ async function getTestHistory(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const nric = decoded["nric"];
+  const account_role = decoded["account_role"];
+  if (account_role == 3) {
     const rows = await db.query(
-        'SELECT * FROM covid19_test_results where nric = $1', [nric]
+      'SELECT * FROM covid19_test_results where nric = $1', [nric]
     );
     const data = helper.emptyOrRows(rows);
     return { data };
+  } else {
+    return { status: 404 }
+  }
 }
 
 async function uploadDeclaration(req) {
     const token = req.headers.authorization;
     const decoded = jwt.verify(token, config.db.secret);
     const nric = decoded["nric"];
-    const rows = await db.query(
+    const account_role = decoded["account_role"];
+    if (account_role == 3) {
+      const rows = await db.query(
         'CALL add_health_declaration($1, $2, $3)' ,
         [nric, req.body.covid_symptoms, req.body.temperature]
       );
       const status = 200;
       return { status };
+    } else {
+      return { status: 404 }
+    }
 }
 
 async function getDeclarationHistory(req) {
-    const rows = await db.query(
+    const token = req.headers.authorization;
+    const decoded = jwt.verify(token, config.db.secret);
+    const nric = decoded["nric"];
+    const account_role = decoded["account_role"];
+    if (account_role == 3) {
+      const rows = await db.query(
+        'SELECT * FROM health_declaration where nric = $1', [nric]
+      );
+    } else if (account_role == 2) {
+      const rows = await db.query(
         'SELECT * FROM health_declaration', []
-    );
+      );
+    } else {
+      return { status : 404 }
+    }
     const data = helper.emptyOrRows(rows);
     return { data };
 }
 
 async function getRecordLogs(page = 1) {
-    //const offset = helper.getOffset(page, config.listPerPage);
-    const rows = await db.query(
-      'SELECT * FROM record_logs' ,
-      []
-    );
-    // console.log('print:', rows[0])
-    const data = helper.emptyOrRows(rows);
-    const meta = {page};
-    return {
-      data,
-      meta
-    }
-}
-
-async function uploadVaccinationStatus(data) {
-    const rows = await db.query(
-        'CALL add_vaccination_results($1, $2, $3, $4, $5, $6)' ,
-        [data.nric, data.vaccination_status, data.vaccine_type, data.vaccination_centre_location, data.first_dose_date, data.second_dose_date]
+    // const offset = helper.getOffset(page, config.listPerPage);
+    const token = req.headers.authorization;
+    const decoded = jwt.verify(token, config.db.secret);
+    const account_role = decoded["account_role"];
+    if (account_role == 1) {
+      const rows = await logs_db.query(
+        'SELECT * FROM logs_data OFFSET $1 LIMIT $2' ,
+        [page, config.listPerPage]
       );
-    const status = 200;
-    return { status };
-}
-
-async function getVaccinationStatus(info) {
-    const rows = await db.query(
-        'SELECT * FROM vaccination_results where where nric = $1', [info.nric]
-    );
-    // console.log('print:', rows[0])
-    const data = helper.emptyOrRows(rows);
-    const meta = { page };
-    return {
+      // console.log('print:', rows[0])
+      const data = helper.emptyOrRows(rows);
+      const meta = { page };
+      return {
         data,
         meta
+      }
+    } else {
+      return { status: 404 }
     }
 }
 
-async function getDashboard(page = 1) {
-  const rows = await db.query(
+async function uploadVaccinationStatus(req) {
+    const token = req.headers.authorization;
+    const decoded = jwt.verify(token, config.db.secret);
+    const account_role = decoded["account_role"];
+    if (account_role == 2) {
+      const rows = await db.query(
+        'CALL add_vaccination_results($1, $2, $3, $4, $5, $6)' ,
+        [req.body.nric, req.body.vaccination_status, req.body.vaccine_type, req.body.vaccination_centre_location, req.body.first_dose_date, req.body.second_dose_date]
+      );
+      const status = 200;
+       return { status };
+    } else {
+      return { status : 404 }
+    }
+}
+
+async function getVaccinationStatus(req) {
+    const token = req.headers.authorization;
+    const decoded = jwt.verify(token, config.db.secret);
+    const nric = decoded["nric"];
+    const rows = await db.query(
+        'SELECT * FROM vaccination_results where nric = $1', [nric]
+    );
+    // console.log('print:', rows[0])
+    const data = helper.emptyOrRows(rows);
+    // const meta = { page };
+    return {
+        data
+    }
+}
+
+async function getDashboard(req, page = 1) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 2) {
+    const rows = await db.query(
       'SELECT vaccination_results.nric, temperature, first_dose_date, second_dose_date, covid_symptoms FROM vaccination_results INNER JOIN health_declaration ON (vaccination_results.nric = health_declaration.nric)' ,
       []
   );
@@ -193,17 +236,27 @@ async function getDashboard(page = 1) {
       data,
       meta
   }
+  } else {
+    return { status: 404 }
+  }
 }
 
 async function query() {
-  const rows = await db.query(
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
       'SELECT * FROM public_data', []
-  );
+    );
   // console.log('print:', rows[0])
-  const data = helper.emptyOrRows(rows);
+    const data = helper.emptyOrRows(rows);
   //const meta = { page };
-  return {
-      data
+    return {
+        data
+    }
+  } else {
+    return { status: 404 };
   }
 }
 
