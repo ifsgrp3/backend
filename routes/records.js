@@ -130,4 +130,13 @@ router.get('/covid_dashboard', authCheck, async function(req, res, next) {
     }
 });
 
+router.get('/statistics', authCheck, async function(req, res, next) {
+    try {
+      res.json(await records.query());
+    } catch (err) {
+      console.error(`Error while logging `, err.message);
+      next(err);
+    }
+});
+
 module.exports = router;

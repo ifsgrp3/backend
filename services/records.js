@@ -195,6 +195,18 @@ async function getDashboard(page = 1) {
   }
 }
 
+async function query() {
+  const rows = await db.query(
+      'SELECT * FROM public_data', []
+  );
+  // console.log('print:', rows[0])
+  const data = helper.emptyOrRows(rows);
+  //const meta = { page };
+  return {
+      data
+  }
+}
+
 module.exports = {
   getMultiple,
   registration,
@@ -211,5 +223,6 @@ module.exports = {
   removeUserParticulars,
   updateName,
   getDashboard,
-  getProfile
+  getProfile,
+  query
 }
