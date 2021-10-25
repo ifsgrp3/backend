@@ -33,7 +33,7 @@ router.get('/profile', authCheck, async function(req, res, next) {
 
 router.put('/update_num', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.updateContactNumber(req.body));
+        res.json(await records.updateContactNumber(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);
@@ -42,7 +42,7 @@ router.put('/update_num', authCheck, async function(req, res, next) {
 
 router.post('/address', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.addAddress(req.body));
+        res.json(await records.addAddress(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);
@@ -51,7 +51,7 @@ router.post('/address', authCheck, async function(req, res, next) {
 
 router.put('/address', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.updateAddress(req.body));
+        res.json(await records.updateAddress(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);
@@ -87,7 +87,7 @@ router.post('/upload_declaration', authCheck, async function(req, res, next) {
 
 router.get('/declaration_history', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.getDeclarationHistory(req));
+        res.json(await records.getDeclarationHistory(req, req.query.page));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);
@@ -96,7 +96,7 @@ router.get('/declaration_history', authCheck, async function(req, res, next) {
 
 router.get('/record_logs', authCheck, async function(req, res, next) {
     try {
-      res.json(await records.getRecordLogs(req.query.page));
+      res.json(await records.getRecordLogs(req, req.query.page));
     } catch (err) {
       console.error(`Error while logging `, err.message);
       next(err);
@@ -132,7 +132,25 @@ router.get('/covid_dashboard', authCheck, async function(req, res, next) {
 
 router.get('/statistics', authCheck, async function(req, res, next) {
     try {
-      res.json(await records.query(req));
+      res.json(await records.query(req, req.query.page));
+    } catch (err) {
+      console.error(`Error while logging `, err.message);
+      next(err);
+    }
+});
+
+router.delete('/user', authCheck, async function(req, res, next) {
+    try {
+      res.json(await records.removeUserParticulars(req));
+    } catch (err) {
+      console.error(`Error while logging `, err.message);
+      next(err);
+    }
+});
+
+router.put('/user/names', authCheck, async function(req, res, next) {
+    try {
+      res.json(await records.updateName(req));
     } catch (err) {
       console.error(`Error while logging `, err.message);
       next(err);

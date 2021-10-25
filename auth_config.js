@@ -6,9 +6,10 @@ const config = {
     port: env.DB_PORT || '5435',
     user: env.DB_USER || 'postgres', // ''User'
     password: env.DB_PASSWORD || 'mysecretpassword',
-    database: env.DB_NAME || 'credentials',
+    database: env.DB_NAME || 'credentials_encrypted',
     secret: env.JWT_SECRET || 'secret'
-  }
+  },
+  listPerPage: 20
 };
 
 module.exports = config;

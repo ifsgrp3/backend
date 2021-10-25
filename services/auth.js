@@ -3,17 +3,19 @@ const helper = require('../helper');
 // const PythonShell = require('python-shell').PythonShell;
 const {spawn} = require('child_process');
 const jwt = require('jsonwebtoken');
-const config = require('../auth_config')
+const config = require('../auth_config');
+require('dotenv').config()
 
-async function getCredentials(req) {
-  //const offset = helper.getOffset(page, config.listPerPage);
+async function getCredentials(req, page = 1) {
+  const offset = helper.getOffset(page, config.listPerPage);
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
-      'SELECT * FROM login_credentials' ,
-      []
+      `SELECT nric, account_status, pgp_sym_decrypt(ble_serial_number::bytea,'${process.env.SECRET_KEY}') as ble_serial_number 
+      FROM login_credentials OFFSET $1 LIMIT $2` ,
+      [offset, config.listPerPage]
     );
     // console.log('print:', rows[0])
     const data = helper.emptyOrRows(rows);
@@ -27,14 +29,14 @@ async function getCredentials(req) {
   }
 }
 
-async function registration(data) {
+async function registration(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
       "CALL add_user($1, $2, $3, $4, $5, $6)" ,
-      [data.nric, data.hashed_password, data.user_salt, data.ble_serial_number, data.account_role, data.admin_id]
+      [req.body.nric, req.body.hashed_password, req.body.user_salt, req.body.ble_serial_number, req.body.account_role, req.body.admin_id]
     );
     const status = 200;
     return { status }
@@ -53,15 +55,20 @@ async function login(credentials) {
       }
     }
     const rows = await db.query(
-        'SELECT nric, ble_serial_number, account_status, account_role FROM login_credentials WHERE nric = $1 AND hashed_password = $2 AND account_role = $3' ,
-        [nric, hashed_password, credentials.account_role]
+        `SELECT nric, 
+        pgp_sym_decrypt(ble_serial_number::bytea,'${process.env.SECRET_KEY}') as ble_serial_number,
+         account_status,
+        pgp_sym_decrypt(account_role::bytea,'${process.env.SECRET_KEY}') as account_role
+        FROM login_credentials 
+        WHERE nric = $1 AND hashed_password = $2` ,
+        [nric, hashed_password]
     );
     // Update password attempts, > 10 attempts => deactivate
     const data = helper.emptyOrRows(rows);
     console.log(data);
     if (!data[0]) {
       await db.query(
-        "UPDATE login_credentials SET password_attempts = password_attempts + 1 WHERE nric = $1" ,
+        "UPDATE login_credentials SET password_attempts = (password_attempts::INTEGER + 1)::VARCHAR WHERE nric = $1" ,
         [nric]
       );
       const updateRow = await resetPasswordAttempts({ nric: nric });
@@ -75,7 +82,7 @@ async function login(credentials) {
       return { data: newData, status, error };
     }
     await db.query(
-      "UPDATE login_credentials SET password_attempts = 0 WHERE nric = $1" ,
+      "UPDATE login_credentials SET password_attempts = '0' WHERE nric = $1" ,
       [nric]
     );
     const token = jwt.sign(
@@ -132,20 +139,22 @@ async function activate(acc) {
   return { status }
 }
 
-async function getAccountLogs(req) {
-  //const offset = helper.getOffset(page, config.listPerPage);
+async function getAccountLogs(req, page = 1) {
+  const offset = helper.getOffset(page, config.listPerPage);
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
-      'SELECT * FROM account_logs LIMIT 200' ,
-      []
+      'SELECT * FROM account_logs OFFSET $1 LIMIT $2' ,
+      [offset, config.listPerPage]
     );
     // console.log('print:', rows[0])
     const data = helper.emptyOrRows(rows);
+    const meta = {page};
     return {
-      data
+      data,
+      meta
     }
   } else {
     return { status: 404 }
@@ -178,7 +187,6 @@ async function getMenuItems(req) {
     return { data: data };
   } else if (account_role == 1) {
     const data = [
-      { path: '/user-profile', title: 'User Profile',  icon:'person', class: '' },
       { path: '/accounts', title: 'Accounts Management', icon: 'content_paste', class: '' },
       { path: '/registration', title: 'User Registration', icon: 'content_paste', class: '' },
       { path: '/account-logs' , title: 'Accounts Logging', icon: 'content_paste', class: '' },

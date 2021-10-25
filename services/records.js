@@ -46,54 +46,89 @@ async function getProfile(req) {
   return { data };
 }
 
-async function removeUserParticulars() {
-  const rows = await db.query(
-    'CALL remove_user_particulars($1)' ,
-    [credentials.nric]
-  );
-  const status = 200;
-  return { status };
+async function removeUserParticulars(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      'CALL remove_user_particulars($1)' ,
+      [req.body.nric]
+    );
+    const status = 200;
+    return { status };
+  } else {
+    return { status: 404 }
+  }
 }
 
 // Contact got problem???
-async function updateName(info) {
-  const rows = await db.query(
-    'CALL update_user_first_last_name($1, $2, $3)' ,
-    [info.nric, info.new_last_name, info.new_first_name]
-  );
-  // const data = helper.emptyOrRows(rows);
-  const status = 200;
-  return { status };
+async function updateName(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      'CALL update_user_first_last_name($1, $2, $3)' ,
+      [req.body.nric, req.body.new_last_name, req.body.new_first_name]
+    );
+    // const data = helper.emptyOrRows(rows);
+    const status = 200;
+    return { status };
+  } else {
+    return { status: 404 };
+  }
 }
 
-async function updateContactNumber(info) {
-  const rows = await db.query(
-    'CALL update_contact_number($1, $2)' ,
-    [info.nric, info.new_contact_number]
-  );
-  // const data = helper.emptyOrRows(rows);
-  const status = 200;
-  return { status };
+async function updateContactNumber(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      'CALL update_contact_number($1, $2)' ,
+      [req.body.nric, req.body.new_contact_number]
+    );
+    // const data = helper.emptyOrRows(rows);
+    const status = 200;
+    return { status };
+  } else {
+    return { status: 404 }
+  }
 }
 
-async function addAddress(info) {
-  const rows = await db.query(
-    'CALL add_user_address($1, $2, $3, $4, $5)' ,
-    [info.nric, info.street_name, info.unit_number, info.zip_code, info.area]
-  );
-  const data = helper.emptyOrRows(rows);
-  const status = 200;
-  return { data, status };
+async function addAddress(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      'CALL add_user_address($1, $2, $3, $4, $5)' ,
+      [req.body.nric, req.body.street_name, req.body.unit_number, req.body.zip_code, req.body.area]
+    );
+    const data = helper.emptyOrRows(rows);
+    const status = 200;
+    return { data, status };
+  } else {
+    return { status: 404 };
+  }
 }
 
-async function updateAddress(info) {
-  const rows = await db.query(
-    'CALL update_address($1, $2, $3, $4, $5)' ,
-    [info.nric, info.new_street_name, info.new_unit_number, info.new_zip_code, info.new_area]
-  );
-  const data = helper.emptyOrRows(rows);
-  const status = 200;
-  return { data, status };
+async function updateAddress(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      'CALL update_address($1, $2, $3, $4, $5)' ,
+      [req.body.nric, req.body.new_street_name, req.body.new_unit_number, req.body.new_zip_code, req.body.new_area]
+    );
+    const data = helper.emptyOrRows(rows);
+    const status = 200;
+    return { data, status };
+  } else {
+    return { status: 404 };
+  }
 }
 
 async function uploadTestResults(req) {
@@ -120,7 +155,11 @@ async function getTestHistory(req) {
   const account_role = decoded["account_role"];
   if (account_role == 3) {
     const rows = await db.query(
-      'SELECT * FROM covid19_test_results where nric = $1', [nric]
+      `SELECT nric, 
+      pgp_sym_decrypt(covid19_test_type::bytea,'${process.env.SECRET_KEY}') as covid19_test_type,
+      pgp_sym_decrypt(test_result::bytea,'${process.env.SECRET_KEY}') as test_result,
+      test_date, test_id 
+      FROM covid19_test_results where nric = $1`, [nric]
     );
     const data = helper.emptyOrRows(rows);
     return { data };
@@ -146,35 +185,43 @@ async function uploadDeclaration(req) {
     }
 }
 
-async function getDeclarationHistory(req) {
+async function getDeclarationHistory(req, page = 1) {
+    const offset = helper.getOffset(page, config.listPerPage);
     const token = req.headers.authorization;
     const decoded = jwt.verify(token, config.db.secret);
     const nric = decoded["nric"];
     const account_role = decoded["account_role"];
     if (account_role == 3) {
       const rows = await db.query(
-        'SELECT * FROM health_declaration where nric = $1', [nric]
+        `SELECT nric, declaration_date, health_declaration_id,
+        pgp_sym_decrypt(covid_symptoms::bytea,'${process.env.SECRET_KEY}') as covid_symptoms,
+        pgp_sym_decrypt(temperature::bytea,'${process.env.SECRET_KEY}') as temperature
+        FROM health_declaration 
+        where nric = $1`, [nric]
       );
+      const data = helper.emptyOrRows(rows);
+      return { data };
     } else if (account_role == 2) {
       const rows = await db.query(
-        'SELECT * FROM health_declaration', []
+        'SELECT * FROM health_declaration OFFSET $1 LIMIT $2', [offset, config.listPerPage]
       );
+      const data = helper.emptyOrRows(rows);
+      const meta = { page };
+      return { data, meta };
     } else {
       return { status : 404 }
     }
-    const data = helper.emptyOrRows(rows);
-    return { data };
 }
 
-async function getRecordLogs(page = 1) {
-    // const offset = helper.getOffset(page, config.listPerPage);
+async function getRecordLogs(req, page = 1) {
+    const offset = helper.getOffset(page, config.listPerPage);
     const token = req.headers.authorization;
     const decoded = jwt.verify(token, config.db.secret);
     const account_role = decoded["account_role"];
     if (account_role == 1) {
       const rows = await logs_db.query(
         'SELECT * FROM logs_data OFFSET $1 LIMIT $2' ,
-        [page, config.listPerPage]
+        [offset, config.listPerPage]
       );
       // console.log('print:', rows[0])
       const data = helper.emptyOrRows(rows);
@@ -220,13 +267,20 @@ async function getVaccinationStatus(req) {
 }
 
 async function getDashboard(req, page = 1) {
+  const offset = helper.getOffset(page, config.listPerPage);
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
   if (account_role == 2) {
     const rows = await db.query(
-      'SELECT vaccination_results.nric, temperature, first_dose_date, second_dose_date, covid_symptoms FROM vaccination_results INNER JOIN health_declaration ON (vaccination_results.nric = health_declaration.nric)' ,
-      []
+      `SELECT vaccination_results.nric,
+      pgp_sym_decrypt(temperature::bytea,'${process.env.SECRET_KEY}') as temperature,
+      pgp_sym_decrypt(first_dose_date::bytea,'${process.env.SECRET_KEY}') as first_dose_date,
+      pgp_sym_decrypt(second_dose_date::bytea,'${process.env.SECRET_KEY}') as second_dose_date,
+      pgp_sym_decrypt(covid_symptoms::bytea,'${process.env.SECRET_KEY}') as covid_symptoms
+      FROM vaccination_results 
+      INNER JOIN health_declaration ON (vaccination_results.nric = health_declaration.nric) OFFSET $1 LIMIT $2` ,
+      [offset, config.listPerPage]
   );
   // console.log('print:', rows[0])
   console.log(rows);
@@ -241,19 +295,21 @@ async function getDashboard(req, page = 1) {
   }
 }
 
-async function query() {
+async function query(req, page = 1) {
+  const offset = helper.getOffset(page, config.listPerPage);
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
-  if (account_role == 1) {
+  if (account_role == 3) {
     const rows = await db.query(
-      'SELECT * FROM public_data', []
+      'SELECT * FROM public_data OFFSET $1 LIMIT $2', [offset, config.listPerPage]
     );
   // console.log('print:', rows[0])
     const data = helper.emptyOrRows(rows);
-  //const meta = { page };
+  const meta = { page };
     return {
-        data
+        data,
+        meta
     }
   } else {
     return { status: 404 };
