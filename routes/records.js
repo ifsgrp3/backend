@@ -87,7 +87,7 @@ router.post('/upload_declaration', authCheck, async function(req, res, next) {
 
 router.get('/declaration_history', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.getDeclarationHistory(req, req.query.page));
+        res.json(await records.getDeclarationHistory(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);
@@ -96,7 +96,7 @@ router.get('/declaration_history', authCheck, async function(req, res, next) {
 
 router.get('/record_logs', authCheck, async function(req, res, next) {
     try {
-      res.json(await records.getRecordLogs(req, req.query.page));
+      res.json(await records.getRecordLogs(req));
     } catch (err) {
       console.error(`Error while logging `, err.message);
       next(err);
@@ -123,16 +123,16 @@ router.get('/vaccination_history', authCheck, async function(req, res, next) {
 
 router.get('/covid_dashboard', authCheck, async function(req, res, next) {
     try {
-      res.json(await records.getDashboard(req, req.query.page));
+      res.json(await records.getDashboard(req));
     } catch (err) {
       console.error(`Error while logging `, err.message);
       next(err);
     }
 });
 
-router.get('/statistics', authCheck, async function(req, res, next) {
+router.post('/statistics', authCheck, async function(req, res, next) {
     try {
-      res.json(await records.query(req, req.query.page));
+      res.json(await records.query(req));
     } catch (err) {
       console.error(`Error while logging `, err.message);
       next(err);

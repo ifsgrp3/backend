@@ -4,25 +4,25 @@ const helper = require('../helper');
 const {spawn} = require('child_process');
 const jwt = require('jsonwebtoken');
 const config = require('../auth_config');
+const bcrypt = require('bcrypt');
 require('dotenv').config()
 
-async function getCredentials(req, page = 1) {
-  const offset = helper.getOffset(page, config.listPerPage);
+async function getCredentials(req) {
+  //const offset = helper.getOffset(page, config.listPerPage);
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
       `SELECT nric, account_status, pgp_sym_decrypt(ble_serial_number::bytea,'${process.env.SECRET_KEY}') as ble_serial_number 
-      FROM login_credentials OFFSET $1 LIMIT $2` ,
-      [offset, config.listPerPage]
+      FROM login_credentials` ,
+      []
     );
     // console.log('print:', rows[0])
     const data = helper.emptyOrRows(rows);
-    const meta = {page};
+    //const meta = {page};
     return {
-      data,
-      meta
+      data
     }
   } else {
     return { status: 404 }
@@ -35,8 +35,8 @@ async function registration(req) {
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
-      "CALL add_user($1, $2, $3, $4, $5, $6)" ,
-      [req.body.nric, req.body.hashed_password, req.body.user_salt, req.body.ble_serial_number, req.body.account_role, req.body.admin_id]
+      "CALL add_user($1, $2, $3, $4, $5)" ,
+      [req.body.nric, req.body.hashed_password, req.body.user_salt, req.body.ble_serial_number, req.body.account_role]
     );
     const status = 200;
     return { status }
@@ -47,9 +47,9 @@ async function registration(req) {
 
 async function login(credentials) {
     const nric = credentials.nric;
-    const hashed_password = credentials.hashed_password;
+    const password = credentials.password;
     const secret = config.db.secret;
-    if (!nric || !hashed_password) {
+    if (!nric || !password) {
       return {
           error: 'User name and password required'
       }
@@ -58,10 +58,11 @@ async function login(credentials) {
         `SELECT nric, 
         pgp_sym_decrypt(ble_serial_number::bytea,'${process.env.SECRET_KEY}') as ble_serial_number,
          account_status,
-        pgp_sym_decrypt(account_role::bytea,'${process.env.SECRET_KEY}') as account_role
+        pgp_sym_decrypt(account_role::bytea,'${process.env.SECRET_KEY}') as account_role,
+        hashed_password
         FROM login_credentials 
-        WHERE nric = $1 AND hashed_password = $2` ,
-        [nric, hashed_password]
+        WHERE nric = $1` ,
+        [nric]
     );
     // Update password attempts, > 10 attempts => deactivate
     const data = helper.emptyOrRows(rows);
@@ -85,10 +86,45 @@ async function login(credentials) {
       "UPDATE login_credentials SET password_attempts = '0' WHERE nric = $1" ,
       [nric]
     );
-    const token = jwt.sign(
-      data[0], secret, { expiresIn: '7d' }
-    );
-    return { token }
+    // const token = jwt.sign(
+    //   data[0], secret, { expiresIn: '7d' }
+    // );
+    // return { token }
+    const compareRes = await bcrypt.compare(password, data[0].hashed_password);
+        if (compareRes) {
+          const user = await db.query(
+            "SELECT * from online_users WHERE nric = $1" ,
+            [nric]
+          );
+          if (user) {
+            return {
+              error: 'Overlapped session'
+            };
+          }
+          await db.query(
+            "CALL add_online_user($1)" ,
+            [nric]
+          );
+          const token = jwt.sign(
+              data[0], secret, { expiresIn: '7d' }
+            );
+            return { token };
+        }
+        else {
+            return {
+                error: 'Invalid username or password'
+            };
+        }
+}
+
+async function logout(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const nric = decoded["nric"];
+  await db.query(
+    "CALL delete_online_user($1)" ,
+    [nric]
+  );
 }
 
 async function mfa(req) {
@@ -139,22 +175,21 @@ async function activate(acc) {
   return { status }
 }
 
-async function getAccountLogs(req, page = 1) {
-  const offset = helper.getOffset(page, config.listPerPage);
+async function getAccountLogs(req) {
+  //const offset = helper.getOffset(page, config.listPerPage);
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
-      'SELECT * FROM account_logs OFFSET $1 LIMIT $2' ,
-      [offset, config.listPerPage]
+      'SELECT * FROM account_logs' ,
+      []
     );
     // console.log('print:', rows[0])
     const data = helper.emptyOrRows(rows);
-    const meta = {page};
+    //const meta = {page};
     return {
-      data,
-      meta
+      data
     }
   } else {
     return { status: 404 }
@@ -190,14 +225,16 @@ async function getMenuItems(req) {
       { path: '/accounts', title: 'Accounts Management', icon: 'content_paste', class: '' },
       { path: '/registration', title: 'User Registration', icon: 'content_paste', class: '' },
       { path: '/account-logs' , title: 'Accounts Logging', icon: 'content_paste', class: '' },
-      { path: '/record-logs' , title: 'Records Logging', icon: 'content_paste', class: '' }
+      { path: '/record-logs' , title: 'Records Logging', icon: 'content_paste', class: '' },
+      { path: '/news', title: 'News Bulletin', icon: 'content_paste', class: '' }
     ]
     return { data: data };
   } else {
     const data = [
       { path: '/covid-declaration' , title: 'COVID-19 Personnel Dashboard', icon: 'content_paste', class: '' },
-      { path: '/health-declaration', title: 'Health Declaration', icon: 'content_paste', class: '' },
-      { path: '/vaccination' , title: 'Vaccination Status', icon: 'content_paste', class: '' }
+      { path: '/health-record', title: 'Health Record', icon: 'content_paste', class: '' },
+      { path: '/vaccination' , title: 'Vaccination Status', icon: 'content_paste', class: '' },
+      { path: '/news', title: 'News Bulletin', icon: 'content_paste', class: '' }
     ]
     return { data: data };
   }

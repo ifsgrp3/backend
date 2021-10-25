@@ -40,7 +40,16 @@ async function getProfile(req) {
   const decoded = jwt.verify(token, config.db.secret);
   const nric = decoded["nric"];
   const rows = await db.query(
-      'SELECT * FROM user_particulars where nric = $1', [nric]
+      `SELECT nric, 
+      pgp_sym_decrypt(first_name::bytea,'${process.env.SECRET_KEY}') as first_name,
+      pgp_sym_decrypt(last_name::bytea,'${process.env.SECRET_KEY}') as last_name,
+      pgp_sym_decrypt(date_of_birth::bytea,'${process.env.SECRET_KEY}') as date_of_birth,
+      pgp_sym_decrypt(age::bytea,'${process.env.SECRET_KEY}') as age,
+      pgp_sym_decrypt(gender::bytea,'${process.env.SECRET_KEY}') as gender,
+      pgp_sym_decrypt(race::bytea,'${process.env.SECRET_KEY}') as race,
+      pgp_sym_decrypt(contact_number::bytea,'${process.env.SECRET_KEY}') as contact_number
+      FROM user_particulars 
+      where nric = $1`, [nric]
   );
   const data = helper.emptyOrRows(rows);
   return { data };
@@ -185,8 +194,8 @@ async function uploadDeclaration(req) {
     }
 }
 
-async function getDeclarationHistory(req, page = 1) {
-    const offset = helper.getOffset(page, config.listPerPage);
+async function getDeclarationHistory(req) {
+    //const offset = helper.getOffset(page, config.listPerPage);
     const token = req.headers.authorization;
     const decoded = jwt.verify(token, config.db.secret);
     const nric = decoded["nric"];
@@ -203,32 +212,34 @@ async function getDeclarationHistory(req, page = 1) {
       return { data };
     } else if (account_role == 2) {
       const rows = await db.query(
-        'SELECT * FROM health_declaration OFFSET $1 LIMIT $2', [offset, config.listPerPage]
+        `SELECT nric, declaration_date, health_declaration_id,
+        pgp_sym_decrypt(covid_symptoms::bytea,'${process.env.SECRET_KEY}') as covid_symptoms,
+        pgp_sym_decrypt(temperature::bytea,'${process.env.SECRET_KEY}') as temperature
+        FROM health_declaration `, []
       );
       const data = helper.emptyOrRows(rows);
-      const meta = { page };
-      return { data, meta };
+      //const meta = { page };
+      return { data };
     } else {
       return { status : 404 }
     }
 }
 
-async function getRecordLogs(req, page = 1) {
-    const offset = helper.getOffset(page, config.listPerPage);
+async function getRecordLogs(req) {
+    //const offset = helper.getOffset(page, config.listPerPage);
     const token = req.headers.authorization;
     const decoded = jwt.verify(token, config.db.secret);
     const account_role = decoded["account_role"];
     if (account_role == 1) {
       const rows = await logs_db.query(
-        'SELECT * FROM logs_data OFFSET $1 LIMIT $2' ,
-        [offset, config.listPerPage]
+        'SELECT * FROM logs_data LIMIT 4000' ,
+        []
       );
       // console.log('print:', rows[0])
       const data = helper.emptyOrRows(rows);
-      const meta = { page };
+      //const meta = { page };
       return {
-        data,
-        meta
+        data
       }
     } else {
       return { status: 404 }
@@ -266,8 +277,8 @@ async function getVaccinationStatus(req) {
     }
 }
 
-async function getDashboard(req, page = 1) {
-  const offset = helper.getOffset(page, config.listPerPage);
+async function getDashboard(req) {
+  //const offset = helper.getOffset(page, config.listPerPage);
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
@@ -279,37 +290,37 @@ async function getDashboard(req, page = 1) {
       pgp_sym_decrypt(second_dose_date::bytea,'${process.env.SECRET_KEY}') as second_dose_date,
       pgp_sym_decrypt(covid_symptoms::bytea,'${process.env.SECRET_KEY}') as covid_symptoms
       FROM vaccination_results 
-      INNER JOIN health_declaration ON (vaccination_results.nric = health_declaration.nric) OFFSET $1 LIMIT $2` ,
-      [offset, config.listPerPage]
+      INNER JOIN health_declaration ON (vaccination_results.nric = health_declaration.nric)` ,
+      []
   );
   // console.log('print:', rows[0])
-  console.log(rows);
   const data = helper.emptyOrRows(rows);
-  const meta = { page };
+  //const meta = { page };
   return {
-      data,
-      meta
+      data
   }
   } else {
     return { status: 404 }
   }
 }
 
-async function query(req, page = 1) {
-  const offset = helper.getOffset(page, config.listPerPage);
+async function query(req) {
+  // const offset = helper.getOffset(page, config.listPerPage);
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
   if (account_role == 3) {
     const rows = await db.query(
-      'SELECT * FROM public_data OFFSET $1 LIMIT $2', [offset, config.listPerPage]
+      `SELECT * FROM public_data 
+      where area = $1 AND gender = $2 AND age = $3`, 
+      [req.body.area, req.body.gender, req.body.age]
     );
   // console.log('print:', rows[0])
-    const data = helper.emptyOrRows(rows);
-  const meta = { page };
+  const data = helper.emptyOrRows(rows);
+  //const meta = { page };
     return {
         data,
-        meta
+        length: data.length
     }
   } else {
     return { status: 404 };
