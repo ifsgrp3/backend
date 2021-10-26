@@ -29,6 +29,32 @@ async function getCredentials(req) {
   }
 }
 
+async function getOneCredential(req) {
+  //const offset = helper.getOffset(page, config.listPerPage);
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      `SELECT nric, 
+      pgp_sym_decrypt(account_role::bytea,'${process.env.SECRET_KEY}') as account_role , 
+      pgp_sym_decrypt(ble_serial_number::bytea,'${process.env.SECRET_KEY}') as ble_serial_number 
+      FROM login_credentials
+      where nric = $1` ,
+      [req.body.nric]
+    );
+    // console.log('print:', rows[0])
+    const data = helper.emptyOrRows(rows);
+    //const meta = {page};
+    return {
+      data
+    }
+  } else {
+    return { status: 404 }
+  }
+}
+
+
 async function registration(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
@@ -96,19 +122,22 @@ async function login(credentials) {
             "SELECT * from online_users WHERE nric = $1" ,
             [nric]
           );
-          if (user) {
+          const userData = helper.emptyOrRows(user);
+          console.log(userData)
+          if (userData.length > 0) {
             return {
               error: 'Overlapped session'
             };
-          }
-          await db.query(
-            "CALL add_online_user($1)" ,
-            [nric]
-          );
-          const token = jwt.sign(
+          } else {
+            await db.query(
+              "CALL add_online_user($1)" ,
+              [nric]
+            );
+            const token = jwt.sign(
               data[0], secret, { expiresIn: '7d' }
             );
             return { token };
+          }
         }
         else {
             return {
@@ -121,10 +150,12 @@ async function logout(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
   const nric = decoded["nric"];
-  await db.query(
+  const deleted = await db.query(
     "CALL delete_online_user($1)" ,
     [nric]
   );
+  const data = helper.emptyOrRows(deleted);
+  return { data, status: 404 }
 }
 
 async function mfa(req) {
@@ -205,6 +236,54 @@ async function resetPasswordAttempts(data) {
   return { status }
 }
 
+async function updatePassword(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      "CALL update_user_password($1, $2)" ,
+      [req.body.update_nric, req.body.new_hashed_password]
+    );
+    const status = 200;
+    return { status }
+  } else {
+    return { status: 404 }
+  }
+}
+
+async function updateBleNumber(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      "CALL update_user_ble($1, $2)" ,
+      [req.body.update_nric, req.body.new_ble_serial_number]
+    );
+    const status = 200;
+    return { status }
+  } else {
+    return { status: 404 }
+  }
+}
+
+async function updateAccountRole(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      "CALL update_user_role($1, $2)" ,
+      [req.body.update_nric , req.body.new_account_role]
+    );
+    const status = 200;
+    return { status }
+  } else {
+    return { status: 404 }
+  }
+}
+
 async function getMenuItems(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
@@ -226,7 +305,8 @@ async function getMenuItems(req) {
       { path: '/registration', title: 'User Registration', icon: 'content_paste', class: '' },
       { path: '/account-logs' , title: 'Accounts Logging', icon: 'content_paste', class: '' },
       { path: '/record-logs' , title: 'Records Logging', icon: 'content_paste', class: '' },
-      { path: '/news', title: 'News Bulletin', icon: 'content_paste', class: '' }
+      { path: '/news', title: 'News Bulletin', icon: 'content_paste', class: '' },
+      { path: '/update', title: 'Update Information', icon: 'content_paste', class: '' }
     ]
     return { data: data };
   } else {
@@ -250,5 +330,10 @@ module.exports = {
   getAccountLogs,
   registration,
   resetPasswordAttempts,
-  getMenuItems
+  getMenuItems,
+  logout,
+  updatePassword,
+  updateAccountRole,
+  updateBleNumber,
+  getOneCredential
 }

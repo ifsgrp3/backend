@@ -31,6 +31,24 @@ router.get('/profile', authCheck, async function(req, res, next) {
     }
 })
 
+router.post('/one_profile', authCheck, async function(req, res, next) {
+    try {
+        res.json(await records.getProfile(req));
+    } catch (err) {
+        console.error(`Error while logging `, err.message);
+        next(err);
+    }
+})
+
+router.post('/get_address', authCheck, async function(req, res, next) {
+    try {
+        res.json(await records.getAddress(req));
+    } catch (err) {
+        console.error(`Error while logging `, err.message);
+        next(err);
+    }
+})
+
 router.put('/update_num', authCheck, async function(req, res, next) {
     try {
         res.json(await records.updateContactNumber(req));
@@ -52,6 +70,24 @@ router.post('/address', authCheck, async function(req, res, next) {
 router.put('/address', authCheck, async function(req, res, next) {
     try {
         res.json(await records.updateAddress(req));
+    } catch (err) {
+        console.error(`Error while logging `, err.message);
+        next(err);
+    }
+})
+
+router.put('/update_vacc_partially', authCheck, async function(req, res, next) {
+    try {
+        res.json(await records.updatePartiallyVaccinated(req));
+    } catch (err) {
+        console.error(`Error while logging `, err.message);
+        next(err);
+    }
+})
+
+router.put('/update_vacc_fully', authCheck, async function(req, res, next) {
+    try {
+        res.json(await records.updateFullyVaccinated(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);

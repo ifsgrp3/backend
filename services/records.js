@@ -55,6 +55,51 @@ async function getProfile(req) {
   return { data };
 }
 
+async function getOneProfile(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      `SELECT nric, 
+      pgp_sym_decrypt(first_name::bytea,'${process.env.SECRET_KEY}') as first_name,
+      pgp_sym_decrypt(last_name::bytea,'${process.env.SECRET_KEY}') as last_name,
+      pgp_sym_decrypt(date_of_birth::bytea,'${process.env.SECRET_KEY}') as date_of_birth,
+      pgp_sym_decrypt(age::bytea,'${process.env.SECRET_KEY}') as age,
+      pgp_sym_decrypt(gender::bytea,'${process.env.SECRET_KEY}') as gender,
+      pgp_sym_decrypt(race::bytea,'${process.env.SECRET_KEY}') as race,
+      pgp_sym_decrypt(contact_number::bytea,'${process.env.SECRET_KEY}') as contact_number
+      FROM user_particulars 
+      where nric = $1`, [req.body.nric]
+    );
+    const data = helper.emptyOrRows(rows);
+    return { data };
+  } else {
+    return { status: 404 }
+  }
+}
+
+async function getAddress(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      `SELECT nric, 
+      pgp_sym_decrypt(street_name::bytea,'${process.env.SECRET_KEY}') as street_name,
+      pgp_sym_decrypt(unit_number::bytea,'${process.env.SECRET_KEY}') as unit_number,
+      pgp_sym_decrypt(zip_code::bytea,'${process.env.SECRET_KEY}') as zip_code,
+      pgp_sym_decrypt(area::bytea,'${process.env.SECRET_KEY}') as area
+      FROM user_address
+      where nric = $1`, [req.body.nric]
+    );
+    const data = helper.emptyOrRows(rows);
+    return { data };
+  } else {
+    return { status: 404 }
+  }
+}
+
 async function removeUserParticulars(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, config.db.secret);
@@ -131,6 +176,40 @@ async function updateAddress(req) {
     const rows = await db.query(
       'CALL update_address($1, $2, $3, $4, $5)' ,
       [req.body.nric, req.body.new_street_name, req.body.new_unit_number, req.body.new_zip_code, req.body.new_area]
+    );
+    const data = helper.emptyOrRows(rows);
+    const status = 200;
+    return { data, status };
+  } else {
+    return { status: 404 };
+  }
+}
+
+async function updatePartiallyVaccinated(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      'CALL update_vaccination_status_to_partially($1)' ,
+      [req.body.curr_nric]
+    );
+    const data = helper.emptyOrRows(rows);
+    const status = 200;
+    return { data, status };
+  } else {
+    return { status: 404 };
+  }
+}
+
+async function updateFullyVaccinated(req) {
+  const token = req.headers.authorization;
+  const decoded = jwt.verify(token, config.db.secret);
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
+      'CALL update_vaccination_status_to_fully($1)' ,
+      [req.body.curr_nric]
     );
     const data = helper.emptyOrRows(rows);
     const status = 200;
@@ -344,5 +423,9 @@ module.exports = {
   updateName,
   getDashboard,
   getProfile,
-  query
+  query,
+  updatePartiallyVaccinated,
+  updateFullyVaccinated,
+  getAddress,
+  getOneProfile
 }
