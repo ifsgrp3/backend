@@ -94,24 +94,10 @@ async function login(credentials) {
     const data = helper.emptyOrRows(rows);
     console.log(data);
     if (!data[0]) {
-      await db.query(
-        "UPDATE login_credentials SET password_attempts = (password_attempts::INTEGER + 1)::VARCHAR WHERE nric = $1" ,
-        [nric]
-      );
-      const updateRow = await resetPasswordAttempts({ nric: nric });
-      const newData = helper.emptyOrRows(updateRow);
-      console.log(newData[0].password_attempts);
-      if( newData[0].password_attempts > 10) {
-        return await deactivate({ nric: nric });
-      }
-      const status = 401;
-      const error = 'Invalid username or password';
-      return { data: newData, status, error };
+      return {
+        error: 'Invalid username or password'
+      };
     }
-    await db.query(
-      "UPDATE login_credentials SET password_attempts = '0' WHERE nric = $1" ,
-      [nric]
-    );
     // const token = jwt.sign(
     //   data[0], secret, { expiresIn: '7d' }
     // );
@@ -133,6 +119,10 @@ async function login(credentials) {
               "CALL add_online_user($1)" ,
               [nric]
             );
+            await db.query(
+              "UPDATE login_credentials SET password_attempts = '0' WHERE nric = $1" ,
+              [nric]
+            );
             const token = jwt.sign(
               data[0], secret, { expiresIn: '7d' }
             );
@@ -140,6 +130,13 @@ async function login(credentials) {
           }
         }
         else {
+          await db.query(
+            "UPDATE login_credentials SET password_attempts = (password_attempts::INTEGER + 1)::VARCHAR WHERE nric = $1" ,
+            [nric]
+          );
+          if( newData[0].password_attempts > 10) {
+            return await deactivate({ nric: nric });
+          }
             return {
                 error: 'Invalid username or password'
             };
@@ -173,7 +170,7 @@ async function mfa(req) {
       if (data === serialNumber) {
         resolve({ status: 200 });
       } else {
-        resolve({ status: 401, error: "BLE serial number not matched!" });
+        reject(data.toString());
       }
     });
 
@@ -291,7 +288,6 @@ async function getMenuItems(req) {
   if (account_role == 3) {
     const data = [
       { path: '/user-profile', title: 'User Profile',  icon:'person', class: '' },
-      { path: '/covid-test', title: 'COVID-19 Test Results', icon: 'content_paste', class: '' },
       { path: '/covid-history', title: 'COVID-19 Test History', icon: 'content_paste', class: '' },
       { path: '/health-declaration', title: 'Health Declaration', icon: 'content_paste', class: '' },
       { path: '/health-record', title: 'Health Record', icon: 'content_paste', class: '' },
@@ -312,6 +308,7 @@ async function getMenuItems(req) {
   } else {
     const data = [
       { path: '/covid-declaration' , title: 'COVID-19 Personnel Dashboard', icon: 'content_paste', class: '' },
+      { path: '/covid-test', title: 'COVID-19 Test Results', icon: 'content_paste', class: '' },
       { path: '/health-record', title: 'Health Record', icon: 'content_paste', class: '' },
       { path: '/vaccination' , title: 'Vaccination Status', icon: 'content_paste', class: '' },
       { path: '/news', title: 'News Bulletin', icon: 'content_paste', class: '' }

@@ -224,7 +224,7 @@ async function uploadTestResults(req) {
   const decoded = jwt.verify(token, config.db.secret);
   const account_role = decoded["account_role"];
   const nric = decoded["nric"];
-  if (account_role == 3) {
+  if (account_role == 2) {
     const rows = await db.query(
       'CALL add_covid19_results($1, $2, $3)' ,
       [nric, req.body.covid19_test_type, req.body.test_result]
@@ -310,8 +310,8 @@ async function getRecordLogs(req) {
     const decoded = jwt.verify(token, config.db.secret);
     const account_role = decoded["account_role"];
     if (account_role == 1) {
-      const rows = await logs_db.query(
-        'SELECT * FROM logs_data LIMIT 4000' ,
+      const rows = await db.query(
+        'SELECT * FROM record_logs' ,
         []
       );
       // console.log('print:', rows[0])
