@@ -6,8 +6,7 @@ const config = {
     port: env.DB_PORT || '5435',
     user: env.DB_USER || 'postgres',
     password: env.DB_PASSWORD || 'mysecretpassword',
-    database: env.DB_NAME || 'healthrecord_encrypted',
-    secret: env.JWT_SECRET || 'secret'
+    database: env.DB_NAME || 'healthrecord_encrypted'
   },
   listPerPage: env.LIST_PER_PAGE || 20,
 };

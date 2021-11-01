@@ -1,0 +1,2 @@
+adafruit_circuitpython_ble==8.0.3
+pycryptodome==3.11.0

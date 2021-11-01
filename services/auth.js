@@ -2,6 +2,7 @@ const db = require('./auth_db');
 const helper = require('../helper');
 // const PythonShell = require('python-shell').PythonShell;
 const {spawn} = require('child_process');
+const exec = require('child_process').execFile;
 const jwt = require('jsonwebtoken');
 const config = require('../auth_config');
 const bcrypt = require('bcrypt');
@@ -10,7 +11,7 @@ require('dotenv').config()
 async function getCredentials(req) {
   //const offset = helper.getOffset(page, config.listPerPage);
   const token = req.headers.authorization;
-  const decoded = jwt.verify(token, config.db.secret);
+  const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
@@ -32,7 +33,7 @@ async function getCredentials(req) {
 async function getOneCredential(req) {
   //const offset = helper.getOffset(page, config.listPerPage);
   const token = req.headers.authorization;
-  const decoded = jwt.verify(token, config.db.secret);
+  const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
@@ -57,7 +58,7 @@ async function getOneCredential(req) {
 
 async function registration(req) {
   const token = req.headers.authorization;
-  const decoded = jwt.verify(token, config.db.secret);
+  const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
@@ -74,7 +75,7 @@ async function registration(req) {
 async function login(credentials) {
     const nric = credentials.nric;
     const password = credentials.password;
-    const secret = config.db.secret;
+    const secret = process.env.JWT_KEY;
     if (!nric || !password) {
       return {
           error: 'User name and password required'
@@ -104,21 +105,21 @@ async function login(credentials) {
     // return { token }
     const compareRes = await bcrypt.compare(password, data[0].hashed_password);
         if (compareRes) {
-          const user = await db.query(
-            "SELECT * from online_users WHERE nric = $1" ,
-            [nric]
-          );
-          const userData = helper.emptyOrRows(user);
-          console.log(userData)
-          if (userData.length > 0) {
-            return {
-              error: 'Overlapped session'
-            };
-          } else {
-            await db.query(
-              "CALL add_online_user($1)" ,
-              [nric]
-            );
+          // const user = await db.query(
+          //   "SELECT * from online_users WHERE nric = $1" ,
+          //   [nric]
+          // );
+          // const userData = helper.emptyOrRows(user);
+          // console.log(userData)
+          // if (userData.length > 0) {
+          //   return {
+          //     error: 'Overlapped session'
+          //   };
+          // } else {
+          //   await db.query(
+          //     "CALL add_online_user($1)" ,
+          //     [nric]
+          //   );
             await db.query(
               "UPDATE login_credentials SET password_attempts = '0' WHERE nric = $1" ,
               [nric]
@@ -127,16 +128,20 @@ async function login(credentials) {
               data[0], secret, { expiresIn: '7d' }
             );
             return { token };
-          }
+          // }
         }
         else {
+          const newData = await db.query(
+            "SELECT password_attempts FROM login_credentials WHERE nric = $1" ,
+            [nric]
+          );
+          if( parseInt(newData[0].password_attempts) >  9) {
+            return await deactivate({ nric: nric });
+          }
           await db.query(
             "UPDATE login_credentials SET password_attempts = (password_attempts::INTEGER + 1)::VARCHAR WHERE nric = $1" ,
             [nric]
           );
-          if( newData[0].password_attempts > 10) {
-            return await deactivate({ nric: nric });
-          }
             return {
                 error: 'Invalid username or password'
             };
@@ -145,7 +150,7 @@ async function login(credentials) {
 
 async function logout(req) {
   const token = req.headers.authorization;
-  const decoded = jwt.verify(token, config.db.secret);
+  const decoded = jwt.verify(token, process.env.JWT_KEY);
   const nric = decoded["nric"];
   const deleted = await db.query(
     "CALL delete_online_user($1)" ,
@@ -157,11 +162,12 @@ async function logout(req) {
 
 async function mfa(req) {
   const token = req.headers.authorization;
-  const decoded = jwt.verify(token, config.db.secret);
+  const decoded = jwt.verify(token, process.env.JWT_KEY);
   const serialNumber = decoded["ble_serial_number"];
-  // const serialNumber = "1234567890123456"
+  // const serialNumber = "5w4lj9nek0dpz1o73assgsx4pg6pj73ztjr8wz5bkzk3qtcj5miexhqajka7re4c"
   return new Promise((resolve, reject) => {
-    const python = spawn("python", ["services/mfa.py"]);
+    // const python = spawn("python", ["services/mfa.py"]);
+    const python = exec("services/dist/mfa.exe");
     python.stdout.on("data", (data) => {
       //resolve(data.toString().replace("\r\n",""));
       data = data.toString().replace("\r\n","");
@@ -177,6 +183,15 @@ async function mfa(req) {
     python.stderr.on("data", (data) => {
       reject(data.toString());
     });
+    // exec('services/dist/mfa.exe', function(err, data) {  
+    //   console.log(err)
+    //   console.log(data.toString());                       
+    // });
+    // var execution = spawn.exec('services/dist/mfa.exe');
+    // execution.stdout.pipe(process.stdout);
+    // execution.on('exit', function() {
+    //   process.exit();
+    // })  
  });
 }
 
@@ -206,7 +221,7 @@ async function activate(acc) {
 async function getAccountLogs(req) {
   //const offset = helper.getOffset(page, config.listPerPage);
   const token = req.headers.authorization;
-  const decoded = jwt.verify(token, config.db.secret);
+  const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
@@ -235,7 +250,7 @@ async function resetPasswordAttempts(data) {
 
 async function updatePassword(req) {
   const token = req.headers.authorization;
-  const decoded = jwt.verify(token, config.db.secret);
+  const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
@@ -251,7 +266,7 @@ async function updatePassword(req) {
 
 async function updateBleNumber(req) {
   const token = req.headers.authorization;
-  const decoded = jwt.verify(token, config.db.secret);
+  const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
@@ -267,7 +282,7 @@ async function updateBleNumber(req) {
 
 async function updateAccountRole(req) {
   const token = req.headers.authorization;
-  const decoded = jwt.verify(token, config.db.secret);
+  const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
     const rows = await db.query(
@@ -283,7 +298,7 @@ async function updateAccountRole(req) {
 
 async function getMenuItems(req) {
   const token = req.headers.authorization;
-  const decoded = jwt.verify(token, config.db.secret);
+  const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 3) {
     const data = [
@@ -309,7 +324,6 @@ async function getMenuItems(req) {
     const data = [
       { path: '/covid-declaration' , title: 'COVID-19 Personnel Dashboard', icon: 'content_paste', class: '' },
       { path: '/covid-test', title: 'COVID-19 Test Results', icon: 'content_paste', class: '' },
-      { path: '/health-record', title: 'Health Record', icon: 'content_paste', class: '' },
       { path: '/vaccination' , title: 'Vaccination Status', icon: 'content_paste', class: '' },
       { path: '/news', title: 'News Bulletin', icon: 'content_paste', class: '' }
     ]
