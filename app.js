@@ -1,17 +1,3 @@
-// const { Pool, Client } = require('pg');
-// const client = new Client({
-//           user: 'postgres',
-//           host: 'group3-1-i.comp.nus.edu.sg',
-//           database: 'credentials',
-//           password: 'mysecretpassword',
-//           port: 5435
-// })
-// client.connect()
-// client.query('select * from login_credentials', (err, res) => {
-//           console.log(err, res)
-//           client.end()
-// })
-
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
@@ -22,6 +8,8 @@ var indexRouter = require('./routes/index');
 var quotesRouter = require('./routes/quotes');
 var authRouter = require('./routes/auth');
 var recordsRouter = require('./routes/records');
+const https = require('https');
+const fs = require('fs');
 
 var app = express();
 
@@ -31,6 +19,10 @@ const corsOptions ={
    credentials:true,            //access-control-allow-credentials:true
    optionSuccessStatus:200,
 }
+const options = {
+   key: fs.readFileSync('key.pem'),
+   cert: fs.readFileSync('cert.pem')
+ };
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -43,5 +35,8 @@ app.use('/', indexRouter);
 // app.use('/quotes', quotesRouter);
 app.use('/auth', authRouter);
 app.use('/records', recordsRouter);
+
+var httpsServer = https.createServer(options, app);
+httpsServer.listen(8000);
 
 module.exports = app;

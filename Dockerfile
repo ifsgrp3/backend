@@ -2,7 +2,7 @@ FROM node:14-alpine as base
 
 WORKDIR /src
 COPY package*.json ./
-EXPOSE 3000
+EXPOSE 8000
 
 # FROM ubuntu
 # ENV DEBIAN_FRONTEND noninteractive
