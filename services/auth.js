@@ -157,7 +157,7 @@ async function logout(req) {
   //   [nric]
   // );
   // const data = helper.emptyOrRows(deleted);
-  return { data, status: 404 }
+  return { status: 404 }
 }
 
 async function mfa(req) {
