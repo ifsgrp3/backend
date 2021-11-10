@@ -19,10 +19,10 @@ const corsOptions ={
    credentials:true,            //access-control-allow-credentials:true
    optionSuccessStatus:200,
 }
-const options = {
-   key: fs.readFileSync('key.pem'),
-   cert: fs.readFileSync('cert.pem')
- };
+// const options = {
+//    key: fs.readFileSync('key.pem'),
+//    cert: fs.readFileSync('cert.pem')
+//  };
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -36,7 +36,7 @@ app.use('/', indexRouter);
 app.use('/auth', authRouter);
 app.use('/records', recordsRouter);
 
-var httpsServer = https.createServer(options, app);
-httpsServer.listen(8000);
+// var httpsServer = https.createServer(options, app);
+// httpsServer.listen(8000);
 
 module.exports = app;
