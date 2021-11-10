@@ -4,16 +4,27 @@ WORKDIR /src
 COPY package*.json ./
 EXPOSE 3000
 
-FROM ubuntu
-RUN mkdir pong
-WORKDIR /pong
-RUN apt-get update 
-RUN apt-get install python3 -y
-RUN apt-get install python3-pip -y
-COPY . /pong
+# FROM ubuntu
+# ENV DEBIAN_FRONTEND noninteractive
+# RUN docker run -it ubuntu bash
+# RUN apt-get update --allow-insecure-repositories --allow-unauthenticated
+# RUN apt autoremove
+# RUN apt-get clean
+# RUN apt-get install gcc
+# RUN mkdir pong
+# WORKDIR /pong
 
-RUN pip3 install adafruit_circuitpython_ble
-RUN pip3 install pycryptodome
+# FROM golang:alpine
+# RUN apk add build-base
+
+# RUN apt-get update || : && apt-get install python3 -y
+# RUN apt-get -y install python3
+# RUN apt-get -y install python3-pip
+# COPY . /pong
+
+# RUN python -m pip install --upgrade pip
+# RUN pip3 install adafruit_circuitpython_ble
+
 
 FROM base as production
 ENV NODE_ENV=production

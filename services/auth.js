@@ -152,11 +152,11 @@ async function logout(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const nric = decoded["nric"];
-  const deleted = await db.query(
-    "CALL delete_online_user($1)" ,
-    [nric]
-  );
-  const data = helper.emptyOrRows(deleted);
+  // const deleted = await db.query(
+  //   "CALL delete_online_user($1)" ,
+  //   [nric]
+  // );
+  // const data = helper.emptyOrRows(deleted);
   return { data, status: 404 }
 }
 
@@ -164,6 +164,7 @@ async function mfa(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const serialNumber = decoded["ble_serial_number"];
+  const nric = decoded["nric"];
   // const serialNumber = "5w4lj9nek0dpz1o73assgsx4pg6pj73ztjr8wz5bkzk3qtcj5miexhqajka7re4c"
   return new Promise((resolve, reject) => {
     // const python = spawn("python", ["services/mfa.py"]);
@@ -171,12 +172,25 @@ async function mfa(req) {
     python.stdout.on("data", (data) => {
       //resolve(data.toString().replace("\r\n",""));
       data = data.toString().replace("\r\n","");
-      console.log(data)
+      const arr = data.split(",");
+      console.log(arr)
       console.log(serialNumber)
-      if (data === serialNumber) {
-        resolve({ status: 200 });
+      if (arr[0] === serialNumber) {
+        const user = db.query(
+          "SELECT * from online_users WHERE nric = $1 AND iv = $2" ,
+          [nric, arr[1]]
+        );
+        const userData = helper.emptyOrRows(user);
+        if (userData.length > 0) {
+          reject(arr[0]);
+        } else {
+          db.query(
+            "CALL add_online_user($1, $2)", [nric, arr[1]]
+          );
+          resolve({ status: 200 });
+        }
       } else {
-        reject(data.toString());
+        reject(arr[0]);
       }
     });
 

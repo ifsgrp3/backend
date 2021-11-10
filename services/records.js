@@ -39,7 +39,9 @@ async function getProfile(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const nric = decoded["nric"];
-  const rows = await db.query(
+  const account_role = decoded["account_role"];
+  if (account_role == 1) {
+    const rows = await db.query(
       `SELECT nric, 
       pgp_sym_decrypt(first_name::bytea,'${process.env.SECRET_KEY}') as first_name,
       pgp_sym_decrypt(last_name::bytea,'${process.env.SECRET_KEY}') as last_name,
@@ -50,9 +52,12 @@ async function getProfile(req) {
       pgp_sym_decrypt(contact_number::bytea,'${process.env.SECRET_KEY}') as contact_number
       FROM user_particulars 
       where nric = $1`, [nric]
-  );
-  const data = helper.emptyOrRows(rows);
-  return { data };
+    );
+    const data = helper.emptyOrRows(rows);
+    return { data };
+  } else {
+    return { status: 404 };
+  }
 }
 
 async function getOneProfile(req) {

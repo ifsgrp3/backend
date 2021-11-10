@@ -31,7 +31,7 @@ def aes_encryption(plaintext):
     
 # Start scanning and detecting dongles
 # print("\nSearching for MFA devices...\n")
-for advertisement in ble.start_scan(Advertisement, timeout=10):
+for advertisement in ble.start_scan(Advertisement, timeout=5):
     device_name = advertisement.complete_name
  
     if device_name and device_name not in found:
@@ -59,9 +59,10 @@ for advertisement in ble.start_scan(Advertisement, timeout=10):
                 # Decrypt serial number with given iv and key
                 try: 
                     ble_serial_num = aes_decryption(ciphertext, iv)
-                    print(ble_serial_num)
+                    # print("Serial number: " + ble_serial_num + "\n")
+                    print(ble_serial_num + "," + iv)
                 except:
                     print("Error when decrypting serial number")
                 GMS_connection.disconnect()
                 
-ble.stop_scan()   
+ble.stop_scan()    
