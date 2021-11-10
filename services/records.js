@@ -40,7 +40,7 @@ async function getProfile(req) {
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const nric = decoded["nric"];
   const account_role = decoded["account_role"];
-  if (account_role == 1) {
+  if (account_role == 3) {
     const rows = await db.query(
       `SELECT nric, 
       pgp_sym_decrypt(first_name::bytea,'${process.env.SECRET_KEY}') as first_name,
