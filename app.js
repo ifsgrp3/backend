@@ -20,8 +20,8 @@ const corsOptions ={
    optionSuccessStatus:200,
 }
 const options = {
-   key: fs.readFileSync('key.pem'),
-   cert: fs.readFileSync('cert.pem')
+   key: fs.readFileSync('ssl/server.key'),
+   cert: fs.readFileSync('ssl/server.crt')
  };
 
 app.use(logger('dev'));

@@ -33,7 +33,7 @@ router.get('/profile', authCheck, async function(req, res, next) {
 
 router.post('/one_profile', authCheck, async function(req, res, next) {
     try {
-        res.json(await records.getProfile(req));
+        res.json(await records.getOneProfile(req));
     } catch (err) {
         console.error(`Error while logging `, err.message);
         next(err);

@@ -3,6 +3,19 @@ const logs_db = require('./logs_db')
 const helper = require('../helper');
 const config = require('../config');
 const jwt = require('jsonwebtoken');
+const cryptoJs = require("crypto-js");
+
+function decryptData(data) {
+  try {
+    const bytes = cryptoJs.AES.decrypt(data, "ifsgrp3ifs4205");
+    if (bytes.toString()) {
+      return JSON.parse(bytes.toString(cryptoJs.enc.Utf8));
+    }
+    return data;
+  } catch (e) {
+    console.log(e);
+  }
+}
 
 async function getMultiple(page = 1) {
   //const offset = helper.getOffset(page, config.listPerPage);
@@ -20,7 +33,7 @@ async function getMultiple(page = 1) {
 }
 
 async function registration(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   // if (account_role === 2) {
@@ -36,7 +49,7 @@ async function registration(req) {
 }
 
 async function getProfile(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const nric = decoded["nric"];
   const account_role = decoded["account_role"];
@@ -61,9 +74,10 @@ async function getProfile(req) {
 }
 
 async function getOneProfile(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
+  console.log(account_role);
   if (account_role == 1) {
     const rows = await db.query(
       `SELECT nric, 
@@ -85,7 +99,7 @@ async function getOneProfile(req) {
 }
 
 async function getAddress(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -106,7 +120,7 @@ async function getAddress(req) {
 }
 
 async function removeUserParticulars(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -123,7 +137,7 @@ async function removeUserParticulars(req) {
 
 // Contact got problem???
 async function updateName(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -140,7 +154,7 @@ async function updateName(req) {
 }
 
 async function updateContactNumber(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -157,7 +171,7 @@ async function updateContactNumber(req) {
 }
 
 async function addAddress(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -174,7 +188,7 @@ async function addAddress(req) {
 }
 
 async function updateAddress(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -191,7 +205,7 @@ async function updateAddress(req) {
 }
 
 async function updatePartiallyVaccinated(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -208,7 +222,7 @@ async function updatePartiallyVaccinated(req) {
 }
 
 async function updateFullyVaccinated(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -225,7 +239,7 @@ async function updateFullyVaccinated(req) {
 }
 
 async function uploadTestResults(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   // const nric = decoded["nric"];
@@ -242,7 +256,7 @@ async function uploadTestResults(req) {
 }
 
 async function getTestHistory(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const nric = decoded["nric"];
   const account_role = decoded["account_role"];
@@ -262,7 +276,7 @@ async function getTestHistory(req) {
 }
 
 async function uploadDeclaration(req) {
-    const token = req.headers.authorization;
+    const token = decryptData(req.headers.authorization);
     const decoded = jwt.verify(token, process.env.JWT_KEY);
     const nric = decoded["nric"];
     const account_role = decoded["account_role"];
@@ -281,7 +295,7 @@ async function uploadDeclaration(req) {
 
 async function getDeclarationHistory(req) {
     //const offset = helper.getOffset(page, config.listPerPage);
-    const token = req.headers.authorization;
+    const token = decryptData(req.headers.authorization);
     const decoded = jwt.verify(token, process.env.JWT_KEY);
     const nric = decoded["nric"];
     const account_role = decoded["account_role"];
@@ -314,7 +328,7 @@ async function getDeclarationHistory(req) {
 
 async function getRecordLogs(req) {
     //const offset = helper.getOffset(page, config.listPerPage);
-    const token = req.headers.authorization;
+    const token = decryptData(req.headers.authorization);
     const decoded = jwt.verify(token, process.env.JWT_KEY);
     const account_role = decoded["account_role"];
     if (account_role == 1) {
@@ -334,7 +348,7 @@ async function getRecordLogs(req) {
 }
 
 async function uploadVaccinationStatus(req) {
-    const token = req.headers.authorization;
+    const token = decryptData(req.headers.authorization);
     const decoded = jwt.verify(token, process.env.JWT_KEY);
     const account_role = decoded["account_role"];
     if (account_role == 2) {
@@ -350,7 +364,7 @@ async function uploadVaccinationStatus(req) {
 }
 
 async function getVaccinationStatus(req) {
-    const token = req.headers.authorization;
+    const token = decryptData(req.headers.authorization);
     const decoded = jwt.verify(token, process.env.JWT_KEY);
     const nric = decoded["nric"];
     const rows = await db.query(
@@ -366,7 +380,7 @@ async function getVaccinationStatus(req) {
 
 async function getDashboard(req) {
   //const offset = helper.getOffset(page, config.listPerPage);
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 2) {
@@ -393,7 +407,7 @@ async function getDashboard(req) {
 
 async function query(req) {
   // const offset = helper.getOffset(page, config.listPerPage);
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 3) {

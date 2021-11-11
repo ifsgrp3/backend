@@ -6,11 +6,24 @@ const exec = require('child_process').execFile;
 const jwt = require('jsonwebtoken');
 const config = require('../auth_config');
 const bcrypt = require('bcrypt');
+const cryptoJs = require("crypto-js");
 require('dotenv').config()
+
+function decryptData(data) {
+  try {
+    const bytes = cryptoJs.AES.decrypt(data, "ifsgrp3ifs4205");
+    if (bytes.toString()) {
+      return JSON.parse(bytes.toString(cryptoJs.enc.Utf8));
+    }
+    return data;
+  } catch (e) {
+    console.log(e);
+  }
+}
 
 async function getCredentials(req) {
   //const offset = helper.getOffset(page, config.listPerPage);
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -32,7 +45,7 @@ async function getCredentials(req) {
 
 async function getOneCredential(req) {
   //const offset = helper.getOffset(page, config.listPerPage);
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -57,7 +70,7 @@ async function getOneCredential(req) {
 
 
 async function registration(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -124,8 +137,12 @@ async function login(credentials) {
               "UPDATE login_credentials SET password_attempts = '0' WHERE nric = $1" ,
               [nric]
             );
+            const cleanedData = {
+              nric: data[0].nric,
+              account_role: data[0].account_role
+            }
             const token = jwt.sign(
-              data[0], secret, { expiresIn: '7d' }
+              cleanedData, secret, { expiresIn: 60 * 60 }
             );
             return { token };
           // }
@@ -149,7 +166,7 @@ async function login(credentials) {
 }
 
 async function logout(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const nric = decoded["nric"];
   // const deleted = await db.query(
@@ -161,10 +178,18 @@ async function logout(req) {
 }
 
 async function mfa(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
-  const serialNumber = decoded["ble_serial_number"];
   const nric = decoded["nric"];
+  const rows = await db.query(
+    `SELECT 
+    pgp_sym_decrypt(ble_serial_number::bytea,'${process.env.SECRET_KEY}') as ble_serial_number
+    FROM login_credentials 
+    WHERE nric = $1` ,
+    [nric]
+  );
+  const data = helper.emptyOrRows(rows);
+  const serialNumber = data[0].ble_serial_number
   // const serialNumber = "5w4lj9nek0dpz1o73assgsx4pg6pj73ztjr8wz5bkzk3qtcj5miexhqajka7re4c"
   return new Promise((resolve, reject) => {
     // const python = spawn("python", ["services/mfa.py"]);
@@ -234,7 +259,7 @@ async function activate(acc) {
 
 async function getAccountLogs(req) {
   //const offset = helper.getOffset(page, config.listPerPage);
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -263,7 +288,7 @@ async function resetPasswordAttempts(data) {
 }
 
 async function updatePassword(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -279,7 +304,7 @@ async function updatePassword(req) {
 }
 
 async function updateBleNumber(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -295,7 +320,7 @@ async function updateBleNumber(req) {
 }
 
 async function updateAccountRole(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 1) {
@@ -311,7 +336,7 @@ async function updateAccountRole(req) {
 }
 
 async function getMenuItems(req) {
-  const token = req.headers.authorization;
+  const token = decryptData(req.headers.authorization);
   const decoded = jwt.verify(token, process.env.JWT_KEY);
   const account_role = decoded["account_role"];
   if (account_role == 3) {
