@@ -36,7 +36,7 @@ app.use('/', indexRouter);
 app.use('/auth', authRouter);
 app.use('/records', recordsRouter);
 
-var httpsServer = https.createServer(options, app);
-httpsServer.listen(8000);
+// var httpsServer = https.createServer(options, app);
+// httpsServer.listen(8000);
 
 module.exports = app;

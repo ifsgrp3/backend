@@ -11,7 +11,7 @@ require('dotenv').config()
 
 function decryptData(data) {
   try {
-    const bytes = cryptoJs.AES.decrypt(data, "ifsgrp3ifs4205");
+    const bytes = cryptoJs.AES.decrypt(data, process.env.ENCRYPTION_KEY);
     if (bytes.toString()) {
       return JSON.parse(bytes.toString(cryptoJs.enc.Utf8));
     }
